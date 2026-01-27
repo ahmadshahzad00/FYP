@@ -42,7 +42,7 @@ function BusinessRegister() {
             <div className="col-md-7">
               <h1 className="fw-bold mb-3">Grow Your Business in Sialkot</h1>
               <p className="lead opacity-75">
-                Register your manufacturing business and connect with global buyers.
+                Register your manufacturing business and connect with global buyer
               </p>
             </div>
             <div className="col-md-5 text-md-end mt-4 mt-md-0">
