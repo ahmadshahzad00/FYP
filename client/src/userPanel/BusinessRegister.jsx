@@ -62,7 +62,7 @@ function BusinessRegister() {
               <div className="card-body p-4 p-md-5">
 
                 <div className="alert alert-info">
-                  <strong>Business Location:</strong> Sialkot-Pakistan
+                  <strong>Business</strong> Sialkot, Pakistan
                 </div>
                 <form onSubmit={handleSubmit}>
                   {/* BUSINESS INFO */}
