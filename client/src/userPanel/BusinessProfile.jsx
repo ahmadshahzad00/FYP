@@ -242,7 +242,8 @@ function BusinessProfile() {
                   </select>
                 </div>
 
-basit
+basit ali
+aku
                 <div className="col-md-6">
                   <label className="form-label">Product Images</label>
                   <div className="upload-box">
