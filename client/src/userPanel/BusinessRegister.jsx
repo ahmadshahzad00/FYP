@@ -20,6 +20,13 @@ function BusinessRegister() {
     products: "",
     website: "",
     description: "",
+
+    // Social Media (Optional)
+    facebook: "",
+    instagram: "",
+    twitter: "",
+    tiktok: "",
+    pinterest: "",
   });
 
   const handleChange = (e) => {
@@ -35,6 +42,7 @@ function BusinessRegister() {
   return (
     <>
       <UserHeader />
+
       {/* HERO SECTION */}
       <section className="hero-gradient text-light py-5">
         <div className="container">
@@ -42,7 +50,7 @@ function BusinessRegister() {
             <div className="col-md-7">
               <h1 className="fw-bold mb-3">Grow Your Business in Sialkot</h1>
               <p className="lead opacity-75">
-                Register your manufacturing business and connect with global buyer
+                Register your manufacturing business and connect with global buyers
               </p>
             </div>
             <div className="col-md-5 text-md-end mt-4 mt-md-0">
@@ -54,6 +62,7 @@ function BusinessRegister() {
           </div>
         </div>
       </section>
+
       {/* FORM SECTION */}
       <div className="container my-5">
         <div className="row justify-content-center">
@@ -64,7 +73,9 @@ function BusinessRegister() {
                 <div className="alert alert-info">
                   <strong>Business Location:</strong> Sialkot, Pakistan
                 </div>
+
                 <form onSubmit={handleSubmit}>
+
                   {/* BUSINESS INFO */}
                   <div className="form-section-title">Business Information</div>
                   <div className="row g-3">
@@ -137,7 +148,7 @@ function BusinessRegister() {
                     </div>
                   </div>
 
-                  {/* LEGAL & VERIFICATION */}
+                  {/* LEGAL */}
                   <div className="form-section-title mt-4">
                     Factory & Legal Verification
                   </div>
@@ -169,48 +180,26 @@ function BusinessRegister() {
                       <label className="form-label">
                         Chamber of Commerce Membership
                       </label>
-                      <input
-                        type="file"
-                        name="chamberMembership"
-                        className="form-control"
-                      />
+                      <input type="file" className="form-control" />
                     </div>
 
                     <div className="col-md-6">
                       <label className="form-label">CNIC Front Picture *</label>
-                      <input
-                        type="file"
-                        name="cnicFront"
-                        className="form-control"
-                        required
-                      />
+                      <input type="file" className="form-control" required />
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">
-                        ISO Certificate (If Available)
-                      </label>
-                      <input
-                        type="file"
-                        name="isoCertificate"
-                        className="form-control"
-                      />
+                      <label className="form-label">ISO Certificate</label>
+                      <input type="file" className="form-control" />
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">
-                        Business License *
-                      </label>
-                      <input
-                        type="file"
-                        name="businessLicense"
-                        className="form-control"
-                        required
-                      />
+                      <label className="form-label">Business License *</label>
+                      <input type="file" className="form-control" required />
                     </div>
                   </div>
 
-                  {/* PRODUCT INFO */}
+                  {/* PRODUCTS */}
                   <div className="form-section-title mt-4">
                     Products & Category
                   </div>
@@ -236,15 +225,74 @@ function BusinessRegister() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">
-                        Products You Manufacture *
-                      </label>
+                      <label className="form-label">Products You Manufacture *</label>
                       <input
                         type="text"
                         name="products"
                         className="form-control"
-                        placeholder="Footballs, Gloves, Jackets"
                         required
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+
+                  {/* SOCIAL MEDIA */}
+                  <div className="form-section-title mt-4">
+                    Social Media Links (Optional)
+                  </div>
+
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Facebook</label>
+                      <input
+                        type="url"
+                        name="facebook"
+                        className="form-control"
+                        placeholder="https://facebook.com/yourpage"
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Instagram</label>
+                      <input
+                        type="url"
+                        name="instagram"
+                        className="form-control"
+                        placeholder="https://instagram.com/yourpage"
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">X (Twitter)</label>
+                      <input
+                        type="url"
+                        name="twitter"
+                        className="form-control"
+                        placeholder="https://x.com/yourhandle"
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">TikTok</label>
+                      <input
+                        type="url"
+                        name="tiktok"
+                        className="form-control"
+                        placeholder="https://tiktok.com/@yourpage"
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Pinterest</label>
+                      <input
+                        type="url"
+                        name="pinterest"
+                        className="form-control"
+                        placeholder="https://pinterest.com/yourbrand"
                         onChange={handleChange}
                       />
                     </div>
@@ -267,7 +315,7 @@ function BusinessRegister() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">Website (Optional)</label>
+                      <label className="form-label">Website</label>
                       <input
                         type="url"
                         name="website"

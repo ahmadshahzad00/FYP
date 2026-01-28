@@ -2,342 +2,262 @@ import React, { useState } from "react";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
 
-function BusinessRegister() {
-  const [formData, setFormData] = useState({
-    companyName: "",
-    ownerName: "",
-    email: "",
-    phone: "",
-    whatsapp: "",
-    yearEstablished: "",
-    factoryAddress: "",
-    ntnNumber: "",
-    chamberMembership: "",
-    cnicFront: "",
-    isoCertificate: "",
-    businessLicense: "",
-    category: "",
-    products: "",
-    website: "",
-    description: "",
 
-    // Social Media (Optional)
-    facebook: "",
-    instagram: "",
-    twitter: "",
-    tiktok: "",
-    pinterest: "",
-  });
+function BusinessProfile() {
+  const [products, setProducts] = useState([
+    {
+      id: 1,
+      name: "Professional Football",
+      category: "Sports",
+      description: "FIFA standard hand-stitched football",
+      size: "Size 5",
+      colors: "White, Black",
+      price: "$12",
+      method: "Hand-stitched",
+    },
+  ]);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const businessInfo = {
+    name: "ABC Sports Industries",
+    owner: "Mr. Ahmad Shahzad",
+    email: "contact@abcsports.com",
+    phone: "+92 300 1234567",
+    location: "Sialkot, Pakistan",
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log(formData);
-    alert("Business registration submitted successfully!");
+  const [form, setForm] = useState({
+    name: "",
+    category: "",
+    description: "",
+    size: "",
+    colors: "",
+    price: "",
+    method: "",
+  });
+
+  const [editId, setEditId] = useState(null);
+
+  const openAddModal = () => {
+    setForm({
+      name: "",
+      category: "",
+      description: "",
+      size: "",
+      colors: "",
+      price: "",
+      method: "",
+    });
+    setEditId(null);
+  };
+
+  const openEditModal = (product) => {
+    setForm(product);
+    setEditId(product.id);
+  };
+
+  const handleSave = () => {
+    if (!form.name || !form.category) return;
+
+    if (editId) {
+      setProducts(products.map((p) => (p.id === editId ? { ...form, id: editId } : p)));
+    } else {
+      setProducts([...products, { ...form, id: Date.now() }]);
+    }
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm("Delete this product?")) {
+      setProducts(products.filter((p) => p.id !== id));
+    }
   };
 
   return (
     <>
       <UserHeader />
 
-      {/* HERO SECTION */}
-      <section className="hero-gradient text-light py-5">
-        <div className="container">
-          <div className="row align-items-center">
-            <div className="col-md-7">
-              <h1 className="fw-bold mb-3">Grow Your Business in Sialkot</h1>
-              <p className="lead opacity-75">
-                Register your manufacturing business and connect with global buyers
-              </p>
-            </div>
-            <div className="col-md-5 text-md-end mt-4 mt-md-0">
-              <span className="location-pill">
-                <i className="bi bi-geo-alt-fill me-2"></i>
-                Sialkot, Pakistan
-              </span>
-            </div>
+      {/* HEADER */}
+      <section className="profile-header">
+        <div className="container d-flex align-items-center">
+          <div className="logo-circle">LOGO</div>
+          <div className="ms-4">
+            <h3 className="fw-bold mb-1">{businessInfo.name}</h3>
+            <p className="text-muted mb-1">Business Owner Dashboard</p>
+            <span className="badge bg-primary">
+              <i className="bi bi-geo-alt-fill me-1"></i>
+              {businessInfo.location}
+            </span>
           </div>
         </div>
       </section>
 
-      {/* FORM SECTION */}
       <div className="container my-5">
-        <div className="row justify-content-center">
-          <div className="col-lg-10">
-            <div className="card shadow-lg border-0 card-soft">
-              <div className="card-body p-4 p-md-5">
+        <div className="row">
+          {/* PRODUCTS */}
+          <div className="col-lg-8">
+            <div className="card shadow-sm border-0">
+              <div className="card-header bg-white d-flex justify-content-between">
+                <h5 className="fw-bold mb-0">Products</h5>
+                <button
+                  className="btn btn-primary btn-sm"
+                  data-bs-toggle="modal"
+                  data-bs-target="#productModal"
+                  onClick={openAddModal}
+                >
+                  <i className="bi bi-plus-lg me-1"></i>Add Product
+                </button>
+              </div>
 
-                <div className="alert alert-info">
-                  <strong>Business Location:</strong> Sialkot, Pakistan
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Name</th>
+                      <th>Category</th>
+                      <th>Size</th>
+                      <th>Colors</th>
+                      <th>Price</th>
+                      <th>Method</th>
+                      <th className="text-end">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map((p) => (
+                      <tr key={p.id}>
+                        <td className="fw-semibold">{p.name}</td>
+                        <td><span className="badge bg-secondary">{p.category}</span></td>
+                        <td>{p.size}</td>
+                        <td>{p.colors}</td>
+                        <td className="fw-bold text-success">{p.price}</td>
+                        <td>
+                          <span className="badge bg-info text-dark">{p.method}</span>
+                        </td>
+                        <td className="text-end">
+                          <button
+                            className="btn btn-outline-secondary btn-sm me-2"
+                            data-bs-toggle="modal"
+                            data-bs-target="#productModal"
+                            onClick={() => openEditModal(p)}
+                          >
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                          <button
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => handleDelete(p.id)}
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {products.length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="text-center text-muted py-4">
+                          No products added
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* BUSINESS INFO */}
+          <div className="col-lg-4">
+            <div className="card shadow-sm border-0">
+              <div className="card-body">
+                <h6 className="fw-bold mb-3 text-primary">
+                  <i className="bi bi-building me-2"></i>Business Info
+                </h6>
+
+                <p><strong>Owner:</strong> {businessInfo.owner}</p>
+                <p><strong>Email:</strong> {businessInfo.email}</p>
+                <p><strong>Phone:</strong> {businessInfo.phone}</p>
+                <p><strong>Location:</strong> {businessInfo.location}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL */}
+      <div className="modal fade" id="productModal">
+        <div className="modal-dialog modal-lg modal-dialog-centered">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">{editId ? "Edit Product" : "Add Product"}</h5>
+              <button className="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div className="modal-body">
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label className="form-label">Product Name</label>
+                  <input className="form-control" value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                <div className="col-md-6">
+                  <label className="form-label">Category</label>
+                  <select className="form-select" value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                    <option value="">Select</option>
+                    <option>Sports</option>
+                    <option>Leather</option>
+                    <option>Fitness</option>
+                  </select>
+                </div>
 
-                  {/* BUSINESS INFO */}
-                  <div className="form-section-title">Business Information</div>
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Company Name *</label>
-                      <input
-                        type="text"
-                        name="companyName"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
-                    </div>
+                <div className="col-md-12">
+                  <label className="form-label">Description</label>
+                  <textarea className="form-control" rows="2"
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}></textarea>
+                </div>
 
-                    <div className="col-md-6">
-                      <label className="form-label">Owner / Contact Person *</label>
-                      <input
-                        type="text"
-                        name="ownerName"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
-                    </div>
+                <div className="col-md-4">
+                  <label className="form-label">Size</label>
+                  <input className="form-control" value={form.size}
+                    onChange={(e) => setForm({ ...form, size: e.target.value })} />
+                </div>
 
-                    <div className="col-md-6">
-                      <label className="form-label">Business Email *</label>
-                      <input
-                        type="email"
-                        name="email"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
-                    </div>
+                <div className="col-md-4">
+                  <label className="form-label">Colors</label>
+                  <input className="form-control" value={form.colors}
+                    onChange={(e) => setForm({ ...form, colors: e.target.value })} />
+                </div>
 
-                    <div className="col-md-6">
-                      <label className="form-label">Business Phone *</label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
-                    </div>
+                <div className="col-md-4">
+                  <label className="form-label">Price</label>
+                  <input className="form-control" value={form.price}
+                    onChange={(e) => setForm({ ...form, price: e.target.value })} />
+                </div>
 
-                    <div className="col-md-6">
-                      <label className="form-label">WhatsApp Number *</label>
-                      <input
-                        type="tel"
-                        name="whatsapp"
-                        className="form-control"
-                        placeholder="+92XXXXXXXXXX"
-                        required
-                        onChange={handleChange}
-                      />
-                    </div>
+                <div className="col-md-6">
+                  <label className="form-label">Manufacturing Method</label>
+                  <select className="form-select" value={form.method}
+                    onChange={(e) => setForm({ ...form, method: e.target.value })}>
+                    <option value="">Select</option>
+                    <option>Hand-stitched</option>
+                    <option>Machine-made</option>
+                  </select>
+                </div>
 
-                    <div className="col-md-6">
-                      <label className="form-label">Year Established *</label>
-                      <input
-                        type="number"
-                        name="yearEstablished"
-                        className="form-control"
-                        placeholder="e.g. 2010"
-                        required
-                        onChange={handleChange}
-                      />
-                    </div>
+                <div className="col-md-6">
+                  <label className="form-label">Product Images</label>
+                  <div className="upload-box">
+                    <i className="bi bi-image"></i>
+                    <small>Upload coming soon</small>
                   </div>
-
-                  {/* LEGAL */}
-                  <div className="form-section-title mt-4">
-                    Factory & Legal Verification
-                  </div>
-
-                  <div className="row g-3">
-                    <div className="col-12">
-                      <label className="form-label">Factory Address *</label>
-                      <input
-                        type="text"
-                        name="factoryAddress"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">NTN Number *</label>
-                      <input
-                        type="text"
-                        name="ntnNumber"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Chamber of Commerce Membership
-                      </label>
-                      <input type="file" className="form-control" />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">CNIC Front Picture *</label>
-                      <input type="file" className="form-control" required />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">ISO Certificate</label>
-                      <input type="file" className="form-control" />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">Business License *</label>
-                      <input type="file" className="form-control" required />
-                    </div>
-                  </div>
-
-                  {/* PRODUCTS */}
-                  <div className="form-section-title mt-4">
-                    Products & Category
-                  </div>
-
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Product Category *</label>
-                      <select
-                        name="category"
-                        className="form-select"
-                        required
-                        onChange={handleChange}
-                      >
-                        <option value="">Select Category</option>
-                        <option>Sports Goods</option>
-                        <option>Leather Products</option>
-                        <option>Surgical Instruments</option>
-                        <option>Textile & Apparel</option>
-                        <option>Kids Toys</option>
-                        <option>Safety Equipment</option>
-                        <option>Other</option>
-                      </select>
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">Products You Manufacture *</label>
-                      <input
-                        type="text"
-                        name="products"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
-                    </div>
-                  </div>
-
-                  {/* SOCIAL MEDIA */}
-                  <div className="form-section-title mt-4">
-                    Social Media Links (Optional)
-                  </div>
-
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Facebook</label>
-                      <input
-                        type="url"
-                        name="facebook"
-                        className="form-control"
-                        placeholder="https://facebook.com/yourpage"
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">Instagram</label>
-                      <input
-                        type="url"
-                        name="instagram"
-                        className="form-control"
-                        placeholder="https://instagram.com/yourpage"
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">X (Twitter)</label>
-                      <input
-                        type="url"
-                        name="twitter"
-                        className="form-control"
-                        placeholder="https://x.com/yourhandle"
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">TikTok..</label>
-                      <input
-                        type="url"
-                        name="tiktok"
-                        className="form-control"
-                        placeholder="https://tiktok.com/@yourpage"
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">Pinterest</label>
-                      <input
-                        type="url"
-                        name="pinterest"
-                        className="form-control"
-                        placeholder="https://pinterest.com/yourbrand"
-                        onChange={handleChange}
-                      />
-                    </div>
-                  </div>
-
-                  {/* EXTRA */}
-                  <div className="form-section-title mt-4">
-                    Additional Details
-                  </div>
-
-                  <div className="row g-3">
-                    <div className="col-12">
-                      <label className="form-label">Company Description</label>
-                      <textarea
-                        name="description"
-                        rows="4"
-                        className="form-control"
-                        onChange={handleChange}
-                      ></textarea>
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">Website</label>
-                      <input
-                        type="url"
-                        name="website"
-                        className="form-control"
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">Company Logo</label>
-                      <input type="file" className="form-control" />
-                    </div>
-                  </div>
-
-                  <div className="text-center mt-5">
-                    <button className="btn btn-primary btn-lg px-5 shadow">
-                      Submit Business Registration
-                    </button>
-                  </div>
-
-                </form>
+                </div>
               </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button className="btn btn-primary" data-bs-dismiss="modal" onClick={handleSave}>
+                Save Product
+              </button>
             </div>
           </div>
         </div>
@@ -348,4 +268,4 @@ function BusinessRegister() {
   );
 }
 
-export default BusinessRegister;
+export default BusinessProfile;
