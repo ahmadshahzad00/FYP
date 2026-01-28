@@ -276,7 +276,7 @@ function BusinessRegister() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">TikTok</label>
+                      <label className="form-label">TikTok..</label>
                       <input
                         type="url"
                         name="tiktok"
