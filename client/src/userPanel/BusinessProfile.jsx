@@ -14,6 +14,7 @@ function BusinessProfile() {
       colors: "White, Black",
       price: "$12",
       method: "Hand-stitched",
+      availableQuantity: 100,
     },
   ]);
 
@@ -33,6 +34,7 @@ function BusinessProfile() {
     colors: "",
     price: "",
     method: "",
+    availableQuantity: "",
   });
 
   const [editId, setEditId] = useState(null);
@@ -46,6 +48,7 @@ function BusinessProfile() {
       colors: "",
       price: "",
       method: "",
+      availableQuantity: "",
     });
     setEditId(null);
   };
@@ -231,6 +234,17 @@ function BusinessProfile() {
                   <label className="form-label">Price</label>
                   <input className="form-control" value={form.price}
                     onChange={(e) => setForm({ ...form, price: e.target.value })} />
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label">Available Quantity</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-control"
+                    value={form.availableQuantity}
+                    onChange={(e) => setForm({ ...form, availableQuantity: e.target.value })}
+                  />
                 </div>
 
                 <div className="col-md-6">
