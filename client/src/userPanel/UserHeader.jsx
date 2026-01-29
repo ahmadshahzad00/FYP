@@ -90,7 +90,7 @@ function UserHeader() {
                 </li>
                 <li>
                   <Link className="dropdown-item" to="/userProfile">
-                    <i className="bi bi-person me-2"></i> Profile
+                    <i className="bi bi-person me-2"></i> User Profile
                   </Link>
                 </li>
                 <li>
