@@ -189,6 +189,11 @@ function BusinessRegister() {
                     </div>
 
                     <div className="col-md-6">
+                      <label className="form-label">CNIC Back Picture *</label>
+                      <input type="file" className="form-control" required />
+                    </div>
+
+                    <div className="col-md-6">
                       <label className="form-label">ISO Certificate</label>
                       <input type="file" className="form-control" />
                     </div>

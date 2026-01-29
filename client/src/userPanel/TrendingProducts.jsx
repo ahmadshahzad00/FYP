@@ -90,6 +90,33 @@ function TrendingProducts() {
       </section>
 
 
+      <div className="container my-5">
+        <div className="row align-items-center bg-light rounded-4 shadow-sm p-4 p-md-5">
+
+          {/* Left Content */}
+          <div className="col-md-8 text-center text-md-start">
+            <h4 className="fw-bold mb-2">
+              Are you a Manufacturer or Exporter?
+            </h4>
+            <p className="text-muted mb-0">
+              Register your business on <strong>Sialkot Export Mella</strong> and
+              showcase your products to buyers around the world.
+            </p>
+          </div>
+
+          {/* Right Button */}
+          <div className="col-md-4 text-center text-md-end mt-3 mt-md-0">
+            <Link
+              to="/business-register"
+              className="btn btn-primary btn-lg px-5 shadow-sm"
+            >
+              Register Your Business
+            </Link>
+          </div>
+
+        </div>
+      </div>
+
       {/* Trending Products */}
       <section className="container my-5">
         <div className="row">
