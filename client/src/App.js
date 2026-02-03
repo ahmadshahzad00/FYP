@@ -21,7 +21,7 @@ import Categories from './userPanel/categories';
 import BusinessRegister from './userPanel/BusinessRegister';
 import BusinessProfile from './userPanel/BusinessProfile';
 import FAQ from './userPanel/FAQ';
-
+import PublicBusinessProfile from './userPanel/PublicBusinessProfile';
 function App() {
   return (
      <Router>
@@ -33,6 +33,12 @@ function App() {
         <Route path="/contactus" element={<ContactUs />} />
         <Route path="/aboutus" element={<AboutUs />} />
         <Route path="/trendingProducts" element={<TrendingProducts />} />
+        <Route path="/categories" element={<Categories />} />
+        <Route path="/business-register" element={<BusinessRegister />} />
+        <Route path="/business-profile" element={<BusinessProfile />} />
+        <Route path="/FAQ" element={<FAQ />} />
+        <Route path="publicBusinessProfile" element={<PublicBusinessProfile/>}/>
+
         {/* admin side */}
         <Route path="/admin-login" element={<AdminSignin />} />
         <Route path="/admin-registration" element={<AdminSignup />} />
@@ -40,10 +46,7 @@ function App() {
         <Route path="/admin-forgot-password" element={<AdminForgotPassword />} />
         <Route path="/admin-reset-password" element={<AdminResetPassword />} />
         <Route path="/admin-dashboard" element={<AdminDashBoard />} />
-        <Route path="/categories" element={<Categories />} />
-        <Route path="/business-register" element={<BusinessRegister />} />
-        <Route path="/business-profile" element={<BusinessProfile />} />
-        <Route path="/FAQ" element={<FAQ />} />
+        
       </Routes>
     </Router>
   );

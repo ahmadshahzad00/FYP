@@ -93,7 +93,7 @@ function Home() {
 
                   {/* Company Info */}
                   <Link
-                    to=""
+                    to="/publicBusinessProfile"
                     className="d-flex align-items-center mb-3 text-decoration-none text-dark company-link"
                   >
                     <div
