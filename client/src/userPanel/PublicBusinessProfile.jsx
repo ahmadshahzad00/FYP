@@ -135,10 +135,9 @@ function PublicBusinessProfile() {
                         <ul className="list-unstyled small mb-3">
                             <li><strong>MOQ:</strong> {p.moq} pcs</li>
                             <li><strong>Method:</strong> {p.method}</li>
-                            <li><strong>Colors:</strong> {p.colors}</li>
+                            <li><strong>Color:</strong> {p.colors}</li>
                             <li><strong>Size:</strong> {p.size}</li>
                         </ul>
-
                         <div className="d-flex justify-content-between align-items-center">
                             <span className="fw-bold text-success">{p.price}</span>
                             <button className="btn btn-outline-primary btn-sm">
@@ -146,11 +145,9 @@ function PublicBusinessProfile() {
                             </button>
                         </div>
                         </div>
-
                     </div>
                     </div>
                 ))}
-
                 {products.length === 0 && (
                     <div className="col-12 text-center text-muted py-4">
                     No products available
