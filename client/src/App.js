@@ -37,7 +37,7 @@ function App() {
         <Route path="/business-register" element={<BusinessRegister />} />
         <Route path="/business-profile" element={<BusinessProfile />} />
         <Route path="/FAQ" element={<FAQ />} />
-        <Route path="publicBusinessProfile" element={<PublicBusinessProfile/>}/>
+        <Route path="/publicBusinessProfile" element={<PublicBusinessProfile/>}/>
 
         {/* admin side */}
         <Route path="/admin-login" element={<AdminSignin />} />
