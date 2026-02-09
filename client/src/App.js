@@ -27,6 +27,7 @@ function App() {
      <Router>
       <Routes>
         {/* user side */}
+
         <Route path="/" element={<Home />} />
         <Route path="/user-login" element={<Login />} />
         <Route path="/user-register" element={<Register />} />
@@ -40,6 +41,7 @@ function App() {
         <Route path="/publicBusinessProfile" element={<PublicBusinessProfile/>}/>
 
         {/* admin side */}
+        
         <Route path="/admin-login" element={<AdminSignin />} />
         <Route path="/admin-registration" element={<AdminSignup />} />
         <Route path="/userProfile" element={<UserProfile/>} />
