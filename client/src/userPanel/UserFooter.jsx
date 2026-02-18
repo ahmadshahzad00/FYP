@@ -19,7 +19,7 @@ function UserFooter() {
 
             {/* Left: Quick Links */}
             <div className="col-lg-6 mb-4 mb-lg-0">
-              <h5 className="fw-bold mb-3">Quick Links....</h5>
+              <h5 className="fw-bold mb-3">Quick Links</h5>
 
               <ul className="list-unstyled footer-links">
                 <li><Link to="/">Home</Link></li>
