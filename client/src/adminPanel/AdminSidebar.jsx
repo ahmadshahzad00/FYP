@@ -29,6 +29,16 @@ function AdminSidebar() {
               <i className="bi bi-speedometer2"></i> Dashboard
             </Link>
           </li>
+          <li className="nav-item">
+            <Link to="/#" className="nav-link text-white">
+              <i className="bi bi-box-seam"></i> Priducts List
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link to="/#" className="nav-link text-white">
+              <i className="bi bi-building"></i> Business List
+            </Link>
+          </li>
         </ul>
       </div>
       <button className="btn btn-danger w-100 mb-4">
