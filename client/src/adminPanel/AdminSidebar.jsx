@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+
 function AdminSidebar() {
 //   const navigate = useNavigate();
 
@@ -35,7 +36,7 @@ function AdminSidebar() {
             </Link>
           </li>
           <li className="nav-item">
-            <Link to="/#" className="nav-link text-white">
+            <Link to="/businessList" className="nav-link text-white">
               <i className="bi bi-building"></i> Business List
             </Link>
           </li>

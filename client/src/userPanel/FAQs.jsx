@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
 
-function FAQ() {
+function FAQs() {
   return (
     <>
       <UserHeader />
@@ -185,4 +185,4 @@ function FAQ() {
   );
 }
 
-export default FAQ;
+export default FAQs;

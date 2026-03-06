@@ -63,7 +63,7 @@ function UserHeader() {
               <ul className="dropdown-menu">
                 <li><Link className="dropdown-item" to="/aboutus">About Us</Link></li>
                 <li><Link className="dropdown-item" to="/contactus">Contact Us</Link></li>
-                <li><Link className="dropdown-item" to="/FAQ">FAQ</Link></li>
+                <li><Link className="dropdown-item" to="/FAQs">FAQ</Link></li>
               </ul>
             </li>
 
