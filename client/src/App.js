@@ -9,6 +9,7 @@ import AdminForgotPassword from './adminPanel/AdminForgotPassword';
 import AdminResetPassword from './adminPanel/AdminResetPassword';
 import AdminDashBoard from './adminPanel/AdminDashBoard'
 import BusinessList from './adminPanel/businessList';
+import ProductList from './adminPanel/productList';
 
 
 import Home from './userPanel/Home';
@@ -41,6 +42,7 @@ function App() {
         <Route path="/FAQs" element={<FAQs />} />
         <Route path="/publicBusinessProfile" element={<PublicBusinessProfile/>}/>
 
+
         {/* admin side */}
         
         <Route path="/admin-login" element={<AdminSignin />} />
@@ -50,6 +52,7 @@ function App() {
         <Route path="/admin-reset-password" element={<AdminResetPassword />} />
         <Route path="/admin-dashboard" element={<AdminDashBoard />} />
         <Route path="/businessList" element={<BusinessList />} />
+        <Route path="/productList" element={<ProductList />} />
         
       </Routes>
     </Router>

@@ -31,8 +31,8 @@ function AdminSidebar() {
             </Link>
           </li>
           <li className="nav-item">
-            <Link to="/#" className="nav-link text-white">
-              <i className="bi bi-box-seam"></i> Priducts List
+            <Link to="/productList" className="nav-link text-white">
+              <i className="bi bi-box-seam"></i> Products List
             </Link>
           </li>
           <li className="nav-item">
