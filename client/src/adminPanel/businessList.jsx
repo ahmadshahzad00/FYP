@@ -27,7 +27,7 @@ function BusinessList() {
     }
   };
 
-  return (
+  return ( 
     <div className="d-flex">
       <AdminSidebar />
       <div className="flex-grow-1 p-4">
@@ -92,5 +92,4 @@ function BusinessList() {
     </div>
   );
 }
-
 export default BusinessList;
