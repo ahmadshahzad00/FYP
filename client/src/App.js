@@ -24,6 +24,9 @@ import BusinessRegister from './userPanel/BusinessRegister';
 import BusinessProfile from './userPanel/BusinessProfile';
 import FAQs from './userPanel/FAQs';
 import PublicBusinessProfile from './userPanel/PublicBusinessProfile';
+import SendInquiry from './userPanel/sendInquiry';
+
+
 function App() {
   return (
      <Router>
@@ -41,6 +44,7 @@ function App() {
         <Route path="/business-profile" element={<BusinessProfile />} />
         <Route path="/FAQs" element={<FAQs />} />
         <Route path="/publicBusinessProfile" element={<PublicBusinessProfile/>}/>
+        <Route path="/sendInquiry" element={<SendInquiry/>}/>
 
 
         {/* admin side */}

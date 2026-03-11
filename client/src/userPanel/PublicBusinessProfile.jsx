@@ -1,6 +1,7 @@
 import React from "react";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
+import { Link } from "react-router-dom";
 
 function PublicBusinessProfile() {
   const businessInfo = {
@@ -140,9 +141,9 @@ function PublicBusinessProfile() {
                         </ul>
                         <div className="d-flex justify-content-between align-items-center">
                             <span className="fw-bold text-success">{p.price}</span>
-                            <button className="btn btn-outline-primary btn-sm">
+                            <Link to="/sendInquiry" className="btn btn-outline-primary btn-sm">
                             Send Inquiry
-                            </button>
+                            </Link>
                         </div>
                         </div>
                     </div>
