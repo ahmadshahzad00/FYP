@@ -36,6 +36,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/user-login" element={<Login />} />
         <Route path="/user-register" element={<Register />} />
+        <Route path="/userProfile" element={<UserProfile/>} />
         <Route path="/contactus" element={<ContactUs />} />
         <Route path="/aboutus" element={<AboutUs />} />
         <Route path="/trendingProducts" element={<TrendingProducts />} />
@@ -51,7 +52,6 @@ function App() {
         
         <Route path="/admin-login" element={<AdminSignin />} />
         <Route path="/admin-registration" element={<AdminSignup />} />
-        <Route path="/userProfile" element={<UserProfile/>} />
         <Route path="/admin-forgot-password" element={<AdminForgotPassword />} />
         <Route path="/admin-reset-password" element={<AdminResetPassword />} />
         <Route path="/admin-dashboard" element={<AdminDashBoard />} />
