@@ -47,7 +47,6 @@ function App() {
         <Route path="/publicBusinessProfile" element={<PublicBusinessProfile/>}/>
         <Route path="/sendInquiry" element={<SendInquiry/>}/>
 
-
         {/* admin side */}
         
         <Route path="/admin-login" element={<AdminSignin />} />
