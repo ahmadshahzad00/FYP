@@ -36,3 +36,11 @@
     transform: rotate(360deg);
   }
 }
+
+/* admin bussinessList */
+.modal-content {
+  transition: transform 0.2s ease;
+}
+.modal-content:hover {
+  transform: scale(1.01);
+}

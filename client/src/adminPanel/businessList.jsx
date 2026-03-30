@@ -4,27 +4,34 @@ import myImage from "../assets/image.png";
 
 function BusinessList() {
   const [businesses, setBusinesses] = useState([]);
+  const [selectedBusiness, setSelectedBusiness] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   // Using dummy data for frontend demonstration
   useEffect(() => {
     const dummyBusinesses = [
-      { id: 1, name: 'Sialkot Textile Mills', category: 'Manufacturing', status: 'Active', author: 'John Smith', logo: myImage },
-      { id: 2, name: 'Export Solutions Ltd', category: 'Trading', status: 'Active', author: 'Sarah Johnson', logo: myImage },
-      { id: 3, name: 'Global Imports Inc', category: 'Import/Export', status: 'Inactive', author: 'Mike Davis', logo: myImage },
+      { id: 1, name: 'Sialkot Textile Mills', category: 'Manufacturing', status: 'Active', author: 'John Smith', logo: myImage, description: 'Leading textile manufacturer in Sialkot.', email: 'info@stm.com', phone: '+92-123-4567890', address: '123 Industrial Area, Sialkot' },
+      { id: 2, name: 'Export Solutions Ltd', category: 'Trading', status: 'Active', author: 'Sarah Johnson', logo: myImage, description: 'Exporting quality goods worldwide.', email: 'contact@exportsolutions.com', phone: '+92-321-9876543', address: '45 Export Road, Sialkot' },
+      { id: 3, name: 'Global Imports Inc', category: 'Import/Export', status: 'Inactive', author: 'Mike Davis', logo: myImage, description: 'Specialists in global imports and exports.', email: 'support@globalimports.com', phone: '+92-300-1122334', address: '78 Market Street, Sialkot' },
     ];
     setBusinesses(dummyBusinesses);
   }, []);
 
   const handleView = (id) => {
-    // Frontend demo: Show alert with business ID
-    alert(`Viewing business with ID: ${id}`);
+    const business = businesses.find(b => b.id === id);
+    setSelectedBusiness(business);
+    setShowModal(true);
   };
 
   const handleDelete = (id) => {
-    // Frontend demo: Confirm and remove from local state
     if (window.confirm('Are you sure you want to delete this business?')) {
       setBusinesses(businesses.filter(business => business.id !== id));
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedBusiness(null);
   };
 
   return ( 
@@ -33,7 +40,7 @@ function BusinessList() {
       <div className="flex-grow-1 p-4">
         <h2 className="text-center mb-4">Business List</h2>
         <div className="table-responsive">
-          <table className="table table-striped table-hover">
+          <table className="table table-striped table-hover align-middle">
             <thead className="table-dark">
               <tr>
                 <th>ID</th>
@@ -53,7 +60,7 @@ function BusinessList() {
                     <img 
                       src={business.logo} 
                       alt={`${business.name} logo`} 
-                      style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+                      style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #dee2e6' }}
                     />
                   </td>
                   <td>{business.name}</td>
@@ -66,13 +73,13 @@ function BusinessList() {
                   </td>
                   <td>
                     <button 
-                      className="btn btn-info btn-sm me-2"
+                      className="btn btn-outline-primary btn-sm me-2"
                       onClick={() => handleView(business.id)}
                     >
                       <i className="bi bi-eye"></i> View
                     </button>
                     <button 
-                      className="btn btn-danger btn-sm" 
+                      className="btn btn-outline-danger btn-sm" 
                       onClick={() => handleDelete(business.id)}
                     >
                       <i className="bi bi-trash"></i> Delete
@@ -88,6 +95,80 @@ function BusinessList() {
             <p className="text-muted">No businesses found.</p>
           </div>
         )}
+
+        {/* Modal */}
+        {showModal && selectedBusiness && (
+          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content shadow">
+                <div className="modal-header bg-primary text-white">
+                  <h5 className="modal-title">
+                    <i className="bi bi-building me-2"></i>
+                    {selectedBusiness.name}
+                  </h5>
+                  <button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={handleCloseModal}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="row">
+                    <div className="col-md-3 text-center mb-3 mb-md-0">
+                      <img 
+                        src={selectedBusiness.logo} 
+                        alt={`${selectedBusiness.name} logo`} 
+                        className="img-fluid rounded border"
+                        style={{ maxHeight: '100px' }}
+                      />
+                    </div>
+                    <div className="col-md-9">
+                      <table className="table table-borderless mb-0">
+                        <tbody>
+                          <tr>
+                            <th scope="row" style={{ width: '150px' }}>Author:</th>
+                            <td>{selectedBusiness.author}</td>
+                          </tr>
+                          <tr>
+                            <th scope="row">Category:</th>
+                            <td>{selectedBusiness.category}</td>
+                          </tr>
+                          <tr>
+                            <th scope="row">Status:</th>
+                            <td>
+                              <span className={`badge ${selectedBusiness.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>
+                                {selectedBusiness.status}
+                              </span>
+                            </td>
+                          </tr>
+                          <tr>
+                            <th scope="row">Email:</th>
+                            <td>{selectedBusiness.email}</td>
+                          </tr>
+                          <tr>
+                            <th scope="row">Phone:</th>
+                            <td>{selectedBusiness.phone}</td>
+                          </tr>
+                          <tr>
+                            <th scope="row">Address:</th>
+                            <td>{selectedBusiness.address}</td>
+                          </tr>
+                          <tr>
+                            <th scope="row">Description:</th>
+                            <td>{selectedBusiness.description}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Modal backdrop */}
+        {showModal && <div className="modal-backdrop fade show"></div>}
       </div>
     </div>
   );
