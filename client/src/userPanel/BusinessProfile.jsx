@@ -27,6 +27,17 @@ function BusinessProfile() {
       method: "Hand-Carved",
       availableQuantity: 100,
     },
+    {
+      id: 3,
+      name: "Professional Tennis Racket",
+      category: "Sports",
+      description: "Tennis racket with advanced graphite frame and synthetic string",
+      size: "Size 27 inch",
+      colors: "Black, Yellow",
+      price: "$80",
+      method: "Hand-Carved",
+      availableQuantity: 100,
+    },
   ]);
 
   const businessInfo = {
