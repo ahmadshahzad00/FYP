@@ -16,6 +16,17 @@ function BusinessProfile() {
       method: "Hand-stitched",
       availableQuantity: 100,
     },
+    {
+      id: 2,
+      name: "Professional Cricket Bat",
+      category: "Sports",
+      description: "Cricket bat with premium willow wood and ergonomic design",
+      size: "Size 38 inch",
+      colors: "Natural Wood",
+      price: "$150",
+      method: "Hand-Carved",
+      availableQuantity: 100,
+    },
   ]);
 
   const businessInfo = {
