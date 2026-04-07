@@ -10,6 +10,9 @@ import AdminResetPassword from './adminPanel/AdminResetPassword';
 import AdminDashBoard from './adminPanel/AdminDashBoard'
 import BusinessList from './adminPanel/businessList';
 import ProductList from './adminPanel/productList';
+import BusinessRequests from "./adminPanel/BusinessRequests";
+import ContactUsList from './adminPanel/ContactUsList';
+
 
 
 import Home from './userPanel/Home';
@@ -56,6 +59,8 @@ function App() {
         <Route path="/admin-dashboard" element={<AdminDashBoard />} />
         <Route path="/businessList" element={<BusinessList />} />
         <Route path="/productList" element={<ProductList />} />
+        <Route path="/businessRequests" element={<BusinessRequests />} />
+        <Route path="/contactMessages" element={<ContactUsList />} />
         
       </Routes>
     </Router>

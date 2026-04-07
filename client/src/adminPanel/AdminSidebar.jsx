@@ -40,6 +40,16 @@ function AdminSidebar() {
               <i className="bi bi-building"></i> Business List
             </Link>
           </li>
+          <li className="nav-item">
+            <Link to="/businessRequests" className="nav-link text-white">
+              <i className="bi bi-building"></i> Business Requests
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link to="/contactMessages" className="nav-link text-white">
+              <i className="bi bi-building"></i> Contact Messages
+            </Link>
+          </li>
         </ul>
       </div>
       <button className="btn btn-danger w-100 mb-4">
