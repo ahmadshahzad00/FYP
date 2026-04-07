@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import {Link} from 'react-router-dom';
+import { Link } from "react-router-dom";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
 import HeroSection from "./HeroSection";
@@ -7,6 +7,7 @@ import HeroSection from "./HeroSection";
 function Home() {
   const [sort, setSort] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [rating, setRating] = useState(0);
 
   const products = [
     {
@@ -56,7 +57,7 @@ function Home() {
     },
   ];
 
-  // Sort by price
+  // Sorting
   let filteredProducts = [...products];
   if (sort === "low") {
     filteredProducts.sort((a, b) => a.price - b.price);
@@ -91,10 +92,10 @@ function Home() {
               <div className="card border-0 shadow-sm h-100 product-card">
                 <div className="card-body p-4">
 
-                  {/* Company Info */}
+                  {/* Company */}
                   <Link
                     to="/publicBusinessProfile"
-                    className="d-flex align-items-center mb-3 text-decoration-none text-dark company-link"
+                    className="d-flex align-items-center mb-3 text-decoration-none text-dark"
                   >
                     <div
                       className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
@@ -107,13 +108,11 @@ function Home() {
                       <small className="fw-semibold d-block">
                         {product.company}
                       </small>
-                      <small className="text-muted">
-                        Verified Seller
-                      </small>
+                      <small className="text-muted">Verified Seller</small>
                     </div>
                   </Link>
 
-                  {/* Product Icon */}
+                  {/* Icon */}
                   <div
                     className="mb-3 mx-auto bg-light rounded-circle d-flex align-items-center justify-content-center"
                     style={{ width: "80px", height: "80px" }}
@@ -133,7 +132,10 @@ function Home() {
                     className="btn btn-outline-primary btn-sm w-100"
                     data-bs-toggle="modal"
                     data-bs-target="#productModal"
-                    onClick={() => setSelectedProduct(product)}
+                    onClick={() => {
+                      setSelectedProduct(product);
+                      setRating(0);
+                    }}
                   >
                     View Details
                   </button>
@@ -144,17 +146,19 @@ function Home() {
         </div>
       </div>
 
-      {/* Product Details Modal */}
+      {/* Modal */}
       <div
         className="modal fade"
         id="productModal"
         tabIndex="-1"
         aria-hidden="true"
       >
-        <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">
+        <div className="modal-dialog modal-dialog-centered modal-lg">
+          <div className="modal-content border-0 shadow-lg rounded-4">
+
+            {/* Header */}
+            <div className="modal-header border-0">
+              <h5 className="modal-title fw-bold">
                 {selectedProduct?.name}
               </h5>
               <button
@@ -164,32 +168,69 @@ function Home() {
               ></button>
             </div>
 
-            <div className="modal-body text-center">
-              <div
-                className="mb-3 bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto"
-                style={{ width: "100px", height: "100px" }}
-              >
-                <i className="bi bi-box-seam fs-1 text-primary"></i>
+            {/* Body */}
+            <div className="modal-body">
+              <div className="row align-items-center">
+
+                {/* Left */}
+                <div className="col-md-5 text-center">
+                  <div
+                    className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto shadow-sm"
+                    style={{ width: "140px", height: "140px" }}
+                  >
+                    <i className="bi bi-box-seam fs-1 text-primary"></i>
+                  </div>
+                </div>
+
+                {/* Right */}
+                <div className="col-md-7">
+                  <p className="fw-bold fs-5 text-primary">
+                    ${selectedProduct?.price}
+                  </p>
+
+                  <p className="mb-1">
+                    <strong>Category:</strong> {selectedProduct?.category}
+                  </p>
+
+                  <p className="mb-1">
+                    <strong>Company:</strong> {selectedProduct?.company}
+                  </p>
+
+                  <p className="small text-muted mt-2">
+                    {selectedProduct?.description}
+                  </p>
+
+                  {/* Rating */}
+                  <div className="mt-3">
+                    <strong>Rate this product:</strong>
+                    <div className="mt-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <i
+                          key={star}
+                          className={`bi ${
+                            star <= rating
+                              ? "bi-star-fill text-warning"
+                              : "bi-star text-secondary"
+                          } fs-4 me-1`}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => setRating(star)}
+                        ></i>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              <p className="fw-bold mb-1">
-                Price: ${selectedProduct?.price}
-              </p>
-
-              <p className="text-muted mb-1">
-                Category: {selectedProduct?.category}
-              </p>
-
-              <p className="text-muted mb-1">
-                Company: {selectedProduct?.company}
-              </p>
-
-              <p className="small text-secondary mt-2">
-                {selectedProduct?.description}
-              </p>
             </div>
 
-            <div className="modal-footer">
+            {/* Footer */}
+            <div className="modal-footer border-0 d-flex justify-content-between">
+              <button
+                className="btn btn-outline-primary"
+                onClick={() => alert(`You rated ${rating} stars ⭐`)}
+              >
+                Submit Rating
+              </button>
+
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -198,6 +239,7 @@ function Home() {
                 Close
               </button>
             </div>
+
           </div>
         </div>
       </div>

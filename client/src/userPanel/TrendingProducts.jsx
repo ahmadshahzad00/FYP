@@ -5,6 +5,7 @@ import UserFooter from "./UserFooter";
 
 function TrendingProducts() {
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [rating, setRating] = useState(0);
 
   const trendingProducts = [
     {
@@ -73,38 +74,30 @@ function TrendingProducts() {
     <>
       <UserHeader />
 
-      {/* Page Header */}
+      {/* Header */}
       <section className="bg-primary text-light py-5">
         <div className="container text-center">
           <h1 className="fw-bold mb-3">Trending Products</h1>
           <p className="opacity-75 fs-5 mb-4">
             Discover the most popular products from Sialkot exporters
           </p>
-          <div className="d-flex justify-content-center">
-            <span
-              className="bg-light"
-              style={{ width: "70px", height: "3px" }}
-            ></span>
-          </div>
-          </div>
+          <span className="bg-light" style={{ width: "70px", height: "3px", display: "inline-block" }}></span>
+        </div>
       </section>
 
-
+      {/* CTA */}
       <div className="container my-5">
         <div className="row align-items-center bg-light rounded-4 shadow-sm p-4 p-md-5">
-
-          {/* Left Content */}
           <div className="col-md-8 text-center text-md-start">
             <h4 className="fw-bold mb-2">
               Are you a Manufacturer or Exporter?
             </h4>
             <p className="text-muted mb-0">
               Register your business on <strong>Sialkot Export Mella</strong> and
-              showcase your products to buyers around the world.
+              showcase your products worldwide.
             </p>
           </div>
 
-          {/* Right Button */}
           <div className="col-md-4 text-center text-md-end mt-3 mt-md-0">
             <Link
               to="/business-register"
@@ -113,22 +106,21 @@ function TrendingProducts() {
               Register Your Business
             </Link>
           </div>
-
         </div>
       </div>
 
-      {/* Trending Products */}
+      {/* Products */}
       <section className="container my-5">
         <div className="row">
           {trendingProducts.map((product) => (
             <div className="col-xl-3 col-lg-3 col-md-6 mb-4" key={product.id}>
-              <div className="card border-0 shadow-sm h-100 product-card">
+              <div className="card border-0 shadow-sm h-100">
                 <div className="card-body p-4">
 
-                  {/* Company Info */}
+                  {/* Company */}
                   <Link
                     to=""
-                    className="d-flex align-items-center mb-3 text-decoration-none text-dark company-link"
+                    className="d-flex align-items-center mb-3 text-decoration-none text-dark"
                   >
                     <div
                       className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
@@ -141,9 +133,7 @@ function TrendingProducts() {
                       <small className="fw-semibold d-block">
                         {product.company}
                       </small>
-                      <small className="text-muted">
-                        Verified Seller
-                      </small>
+                      <small className="text-muted">Verified Seller</small>
                     </div>
                   </Link>
 
@@ -152,7 +142,7 @@ function TrendingProducts() {
                     {product.tag}
                   </span>
 
-                  {/* Product Icon */}
+                  {/* Icon */}
                   <div className="text-center mb-3">
                     <i className="bi bi-box-seam fs-1 text-primary"></i>
                   </div>
@@ -167,16 +157,17 @@ function TrendingProducts() {
 
                   <div className="d-flex justify-content-center align-items-center mb-3">
                     <i className="bi bi-star-fill text-warning me-1"></i>
-                    <span className="fw-medium">
-                      {product.rating}
-                    </span>
+                    <span>{product.rating}</span>
                   </div>
 
                   <button
                     className="btn btn-outline-primary w-100"
                     data-bs-toggle="modal"
                     data-bs-target="#trendingModal"
-                    onClick={() => setSelectedProduct(product)}
+                    onClick={() => {
+                      setSelectedProduct(product);
+                      setRating(0);
+                    }}
                   >
                     View Details
                   </button>
@@ -187,17 +178,19 @@ function TrendingProducts() {
         </div>
       </section>
 
-      {/* Product Details Modal */}
+      {/* Modal */}
       <div
         className="modal fade"
         id="trendingModal"
         tabIndex="-1"
         aria-hidden="true"
       >
-        <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">
+        <div className="modal-dialog modal-dialog-centered modal-lg">
+          <div className="modal-content border-0 shadow-lg rounded-4">
+
+            {/* Header */}
+            <div className="modal-header border-0">
+              <h5 className="modal-title fw-bold">
                 {selectedProduct?.name}
               </h5>
               <button
@@ -207,36 +200,69 @@ function TrendingProducts() {
               ></button>
             </div>
 
-            <div className="modal-body text-center">
-              <div
-                className="mb-3 bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto"
-                style={{ width: "100px", height: "100px" }}
-              >
-                <i className="bi bi-box-seam fs-1 text-primary"></i>
+            {/* Body */}
+            <div className="modal-body">
+              <div className="row align-items-center">
+
+                {/* Left */}
+                <div className="col-md-5 text-center">
+                  <div
+                    className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto shadow-sm"
+                    style={{ width: "140px", height: "140px" }}
+                  >
+                    <i className="bi bi-box-seam fs-1 text-primary"></i>
+                  </div>
+                </div>
+
+                {/* Right */}
+                <div className="col-md-7">
+                  <p className="fw-bold fs-5 text-primary">
+                    Rs {selectedProduct?.price?.toLocaleString()}
+                  </p>
+
+                  <p className="mb-1">
+                    <strong>Company:</strong> {selectedProduct?.company}
+                  </p>
+
+                  <p className="mb-1">
+                    <strong>Tag:</strong> {selectedProduct?.tag}
+                  </p>
+
+                  <p className="small text-muted mt-2">
+                    {selectedProduct?.description}
+                  </p>
+
+                  {/* Rating UI */}
+                  <div className="mt-3">
+                    <strong>Rate this product:</strong>
+                    <div className="mt-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <i
+                          key={star}
+                          className={`bi ${
+                            star <= rating
+                              ? "bi-star-fill text-warning"
+                              : "bi-star text-secondary"
+                          } fs-4 me-1`}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => setRating(star)}
+                        ></i>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              <p className="fw-bold mb-1">
-                Price: Rs {selectedProduct?.price?.toLocaleString()}
-              </p>
-
-              <p className="text-muted mb-1">
-                Rating: ⭐ {selectedProduct?.rating}
-              </p>
-
-              <p className="text-muted mb-1">
-                Company: {selectedProduct?.company}
-              </p>
-
-              <span className="badge bg-primary mb-3">
-                {selectedProduct?.tag}
-              </span>
-
-              <p className="small text-secondary mt-3">
-                {selectedProduct?.description}
-              </p>
             </div>
 
-            <div className="modal-footer">
+            {/* Footer */}
+            <div className="modal-footer border-0 d-flex justify-content-between">
+              <button
+                className="btn btn-outline-primary"
+                onClick={() => alert(`You rated ${rating} stars ⭐`)}
+              >
+                Submit Rating
+              </button>
+
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -245,6 +271,7 @@ function TrendingProducts() {
                 Close
               </button>
             </div>
+
           </div>
         </div>
       </div>
