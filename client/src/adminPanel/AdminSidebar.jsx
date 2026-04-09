@@ -50,6 +50,11 @@ function AdminSidebar() {
               <i className="bi bi-building"></i> Contact Messages
             </Link>
           </li>
+          <li className="nav-item">
+            <Link to="/team-members-list" className="nav-link text-white">
+              <i className="bi bi-building"></i> Team
+            </Link>
+          </li>
         </ul>
       </div>
       <button className="btn btn-danger w-100 mb-4">

@@ -3,22 +3,24 @@ import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
+/* ================= ADMIN ================= */
 import AdminSignin from './adminPanel/AdminSignin';
 import AdminSignup from './adminPanel/AdminSignup';
 import AdminForgotPassword from './adminPanel/AdminForgotPassword';
 import AdminResetPassword from './adminPanel/AdminResetPassword';
-import AdminDashBoard from './adminPanel/AdminDashBoard'
+import AdminDashBoard from './adminPanel/AdminDashBoard';
 import BusinessList from './adminPanel/businessList';
 import ProductList from './adminPanel/productList';
 import BusinessRequests from "./adminPanel/BusinessRequests";
 import ContactUsList from './adminPanel/ContactUsList';
+import AddTeamMember from './adminPanel/addTeamMember';
+import ListTeamMember from './adminPanel/ListTeamMember';
 
-
-
+/* ================= USER ================= */
 import Home from './userPanel/Home';
-import Login from './userPanel/Login'
-import Register from './userPanel/Register'
-import ContactUs from './userPanel/ContactUs'
+import Login from './userPanel/Login';
+import Register from './userPanel/Register';
+import ContactUs from './userPanel/ContactUs';
 import UserProfile from './userPanel/UserProfile';
 import AboutUs from './userPanel/AboutUs';
 import TrendingProducts from './userPanel/TrendingProducts';
@@ -32,14 +34,14 @@ import SendInquiry from './userPanel/sendInquiry';
 
 function App() {
   return (
-     <Router>
+    <Router>
       <Routes>
-        {/* user side */}
 
+        {/* ================= USER ROUTES ================= */}
         <Route path="/" element={<Home />} />
         <Route path="/user-login" element={<Login />} />
         <Route path="/user-register" element={<Register />} />
-        <Route path="/userProfile" element={<UserProfile/>} />
+        <Route path="/userProfile" element={<UserProfile />} />
         <Route path="/contactus" element={<ContactUs />} />
         <Route path="/aboutus" element={<AboutUs />} />
         <Route path="/trendingProducts" element={<TrendingProducts />} />
@@ -47,11 +49,10 @@ function App() {
         <Route path="/business-register" element={<BusinessRegister />} />
         <Route path="/business-profile" element={<BusinessProfile />} />
         <Route path="/FAQs" element={<FAQs />} />
-        <Route path="/publicBusinessProfile" element={<PublicBusinessProfile/>}/>
-        <Route path="/sendInquiry" element={<SendInquiry/>}/>
+        <Route path="/publicBusinessProfile" element={<PublicBusinessProfile />} />
+        <Route path="/sendInquiry" element={<SendInquiry />} />
 
-        {/* admin side */}
-        
+        {/* ================= ADMIN ROUTES ================= */}
         <Route path="/admin-login" element={<AdminSignin />} />
         <Route path="/admin-registration" element={<AdminSignup />} />
         <Route path="/admin-forgot-password" element={<AdminForgotPassword />} />
@@ -61,7 +62,9 @@ function App() {
         <Route path="/productList" element={<ProductList />} />
         <Route path="/businessRequests" element={<BusinessRequests />} />
         <Route path="/contactMessages" element={<ContactUsList />} />
-        
+        <Route path="/team-members" element={<AddTeamMember />} />
+        <Route path="/team-members-list" element={<ListTeamMember />} />
+
       </Routes>
     </Router>
   );
