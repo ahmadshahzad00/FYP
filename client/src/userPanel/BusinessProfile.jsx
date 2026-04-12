@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
-
+import productImage from "../assets/image.png";
 
 function BusinessProfile() {
   const [products, setProducts] = useState([
@@ -15,28 +15,33 @@ function BusinessProfile() {
       price: "$12",
       method: "Hand-stitched",
       availableQuantity: 100,
+      image: productImage,
     },
     {
       id: 2,
       name: "Professional Cricket Bat",
       category: "Sports",
-      description: "Cricket bat with premium willow wood and ergonomic design",
+      description:
+        "Cricket bat with premium willow wood and ergonomic design",
       size: "Size 38 inch",
       colors: "Natural Wood",
       price: "$150",
       method: "Hand-Carved",
       availableQuantity: 100,
+      image: productImage,
     },
     {
       id: 3,
       name: "Professional Tennis Racket",
       category: "Sports",
-      description: "Tennis racket with advanced graphite frame and synthetic string",
+      description:
+        "Tennis racket with advanced graphite frame and synthetic string",
       size: "Size 27 inch",
       colors: "Black, Yellow",
       price: "$80",
       method: "Hand-Carved",
       availableQuantity: 100,
+      image: productImage,
     },
   ]);
 
@@ -83,10 +88,19 @@ function BusinessProfile() {
   const handleSave = () => {
     if (!form.name || !form.category) return;
 
+    const newProduct = {
+      ...form,
+      image: productImage, // default image
+    };
+
     if (editId) {
-      setProducts(products.map((p) => (p.id === editId ? { ...form, id: editId } : p)));
+      setProducts(
+        products.map((p) =>
+          p.id === editId ? { ...newProduct, id: editId } : p
+        )
+      );
     } else {
-      setProducts([...products, { ...form, id: Date.now() }]);
+      setProducts([...products, { ...newProduct, id: Date.now() }]);
     }
   };
 
@@ -136,6 +150,7 @@ function BusinessProfile() {
                 <table className="table table-hover align-middle mb-0">
                   <thead className="table-light">
                     <tr>
+                      <th>Image</th>
                       <th>Name</th>
                       <th>Category</th>
                       <th>Size</th>
@@ -148,13 +163,31 @@ function BusinessProfile() {
                   <tbody>
                     {products.map((p) => (
                       <tr key={p.id}>
+                        <td>
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            style={{
+                              width: "50px",
+                              height: "50px",
+                              objectFit: "cover",
+                              borderRadius: "6px",
+                            }}
+                          />
+                        </td>
                         <td className="fw-semibold">{p.name}</td>
-                        <td><span className="badge bg-secondary">{p.category}</span></td>
+                        <td>
+                          <span className="badge bg-secondary">
+                            {p.category}
+                          </span>
+                        </td>
                         <td>{p.size}</td>
                         <td>{p.colors}</td>
                         <td className="fw-bold text-success">{p.price}</td>
                         <td>
-                          <span className="badge bg-info text-dark">{p.method}</span>
+                          <span className="badge bg-info text-dark">
+                            {p.method}
+                          </span>
                         </td>
                         <td className="text-end">
                           <button
@@ -174,9 +207,10 @@ function BusinessProfile() {
                         </td>
                       </tr>
                     ))}
+
                     {products.length === 0 && (
                       <tr>
-                        <td colSpan="7" className="text-center text-muted py-4">
+                        <td colSpan="8" className="text-center text-muted py-4">
                           No products added
                         </td>
                       </tr>
@@ -195,10 +229,18 @@ function BusinessProfile() {
                   <i className="bi bi-building me-2"></i>Business Info
                 </h6>
 
-                <p><strong>Owner:</strong> {businessInfo.owner}</p>
-                <p><strong>Email:</strong> {businessInfo.email}</p>
-                <p><strong>Phone:</strong> {businessInfo.phone}</p>
-                <p><strong>Location:</strong> {businessInfo.location}</p>
+                <p>
+                  <strong>Owner:</strong> {businessInfo.owner}
+                </p>
+                <p>
+                  <strong>Email:</strong> {businessInfo.email}
+                </p>
+                <p>
+                  <strong>Phone:</strong> {businessInfo.phone}
+                </p>
+                <p>
+                  <strong>Location:</strong> {businessInfo.location}
+                </p>
               </div>
             </div>
           </div>
@@ -210,22 +252,37 @@ function BusinessProfile() {
         <div className="modal-dialog modal-lg modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title">{editId ? "Edit Product" : "Add Product"}</h5>
-              <button className="btn-close" data-bs-dismiss="modal"></button>
+              <h5 className="modal-title">
+                {editId ? "Edit Product" : "Add Product"}
+              </h5>
+              <button
+                className="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
             </div>
 
             <div className="modal-body">
               <div className="row g-3">
                 <div className="col-md-6">
                   <label className="form-label">Product Name</label>
-                  <input className="form-control" value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  <input
+                    className="form-control"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm({ ...form, name: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div className="col-md-6">
                   <label className="form-label">Category</label>
-                  <select className="form-select" value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                  <select
+                    className="form-select"
+                    value={form.category}
+                    onChange={(e) =>
+                      setForm({ ...form, category: e.target.value })
+                    }
+                  >
                     <option value="">Select</option>
                     <option>Sports</option>
                     <option>Leather</option>
@@ -235,44 +292,78 @@ function BusinessProfile() {
 
                 <div className="col-md-12">
                   <label className="form-label">Description</label>
-                  <textarea className="form-control" rows="2"
+                  <textarea
+                    className="form-control"
+                    rows="2"
                     value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}></textarea>
+                    onChange={(e) =>
+                      setForm({ ...form, description: e.target.value })
+                    }
+                  ></textarea>
                 </div>
 
                 <div className="col-md-4">
                   <label className="form-label">Size</label>
-                  <input className="form-control" value={form.size}
-                    onChange={(e) => setForm({ ...form, size: e.target.value })} />
+                  <input
+                    className="form-control"
+                    value={form.size}
+                    onChange={(e) =>
+                      setForm({ ...form, size: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div className="col-md-4">
                   <label className="form-label">Colors</label>
-                  <input className="form-control" value={form.colors}
-                    onChange={(e) => setForm({ ...form, colors: e.target.value })} />
+                  <input
+                    className="form-control"
+                    value={form.colors}
+                    onChange={(e) =>
+                      setForm({ ...form, colors: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div className="col-md-4">
                   <label className="form-label">Price</label>
-                  <input className="form-control" value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })} />
+                  <input
+                    className="form-control"
+                    value={form.price}
+                    onChange={(e) =>
+                      setForm({ ...form, price: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div className="col-md-4">
-                  <label className="form-label">Available Quantity</label>
+                  <label className="form-label">
+                    Available Quantity
+                  </label>
                   <input
                     type="number"
                     min="0"
                     className="form-control"
                     value={form.availableQuantity}
-                    onChange={(e) => setForm({ ...form, availableQuantity: e.target.value })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        availableQuantity: e.target.value,
+                      })
+                    }
                   />
                 </div>
 
                 <div className="col-md-6">
-                  <label className="form-label">Manufacturing Method</label>
-                  <select className="form-select" value={form.method}
-                    onChange={(e) => setForm({ ...form, method: e.target.value })}>
+                  <label className="form-label">
+                    Manufacturing Method
+                  </label>
+                  <select
+                    className="form-select"
+                    value={form.method}
+                    onChange={(e) =>
+                      setForm({ ...form, method: e.target.value })
+                    }
+                  >
                     <option value="">Select</option>
                     <option>Hand-stitched</option>
                     <option>Machine-made</option>
@@ -281,17 +372,32 @@ function BusinessProfile() {
 
                 <div className="col-md-6">
                   <label className="form-label">Product Images</label>
-                  <div className="upload-box">
-                    <i className="bi bi-image"></i>
-                    <small>Upload coming soon</small>
+                  <div className="upload-box text-center border rounded p-3">
+                    <img
+                      src={productImage}
+                      alt="preview"
+                      style={{ width: "80px", marginBottom: "10px" }}
+                    />
+                    <small className="d-block">
+                      Upload coming soon
+                    </small>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button className="btn btn-primary" data-bs-dismiss="modal" onClick={handleSave}>
+              <button
+                className="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                data-bs-dismiss="modal"
+                onClick={handleSave}
+              >
                 Save Product
               </button>
             </div>

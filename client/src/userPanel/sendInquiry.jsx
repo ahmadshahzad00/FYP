@@ -10,7 +10,7 @@ function SendInquiry() {
     company: '',
     phone: '',
     subject: '',
-    productInterest: '',
+    productName: '',
     quantity: '',
     specifications: '',
     message: ''
@@ -43,13 +43,13 @@ function SendInquiry() {
         company: '',
         phone: '',
         subject: '',
-        productInterest: '',
+        productName: '',
         quantity: '',
         specifications: '',
         message: ''
       });
 
-      setSubmitMessage('Thank you! Your inquiry has been sent successfully.');
+      setSubmitMessage('Thank you! Your product inquiry has been sent successfully.');
       setTimeout(() => setSubmitMessage(''), 5000);
 
     } catch (error) {
@@ -69,10 +69,10 @@ function SendInquiry() {
 
             <div className="card shadow-lg border-0">
 
-              <div className="card-header bg-success text-white text-center py-4">
+              <div className="card-header bg-primary text-white text-center py-4">
                 <h2 className="mb-0">
-                  <i className="bi bi-chat-quote-fill me-2"></i>
-                  Send Business Inquiry
+                  <i className="bi bi-box-seam me-2"></i>
+                  Product Inquiry
                 </h2>
               </div>
 
@@ -86,6 +86,7 @@ function SendInquiry() {
 
                 <form onSubmit={handleSubmit}>
 
+                  {/* USER INFO */}
                   <div className="row mb-3">
                     <div className="col-md-6">
                       <label className="form-label">Full Name</label>
@@ -114,7 +115,7 @@ function SendInquiry() {
 
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label">Company</label>
+                      <label className="form-label">Company (Optional)</label>
                       <input
                         type="text"
                         className="form-control"
@@ -138,9 +139,10 @@ function SendInquiry() {
                     </div>
                   </div>
 
+                  {/* PRODUCT INFO */}
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label">Subject</label>
+                      <label className="form-label">Inquiry Type</label>
                       <select
                         className="form-select"
                         name="subject"
@@ -149,31 +151,32 @@ function SendInquiry() {
                         disabled={isSubmitting}
                       >
                         <option value="">Select</option>
-                        <option value="pricing">Pricing</option>
+                        <option value="pricing">Price Request</option>
                         <option value="bulk">Bulk Order</option>
-                        <option value="custom">Custom Design</option>
-                        <option value="other">Other</option>
+                        <option value="custom">Customization</option>
+                        <option value="availability">Availability</option>
                       </select>
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">Product Interest</label>
+                      <label className="form-label">Product Name</label>
                       <input
                         type="text"
                         className="form-control"
-                        name="productInterest"
-                        value={formData.productInterest}
+                        name="productName"
+                        value={formData.productName}
                         onChange={handleChange}
                         disabled={isSubmitting}
+                        placeholder="e.g. Football, Cricket Bat"
                       />
                     </div>
                   </div>
 
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label">Quantity</label>
+                      <label className="form-label">Quantity Required</label>
                       <input
-                        type="text"
+                        type="number"
                         className="form-control"
                         name="quantity"
                         value={formData.quantity}
@@ -191,12 +194,14 @@ function SendInquiry() {
                         value={formData.specifications}
                         onChange={handleChange}
                         disabled={isSubmitting}
+                        placeholder="Size, color, material, etc."
                       />
                     </div>
                   </div>
 
+                  {/* MESSAGE */}
                   <div className="mb-3">
-                    <label className="form-label">Message</label>
+                    <label className="form-label">Additional Message</label>
                     <textarea
                       className="form-control"
                       rows="5"
@@ -204,13 +209,14 @@ function SendInquiry() {
                       value={formData.message}
                       onChange={handleChange}
                       disabled={isSubmitting}
+                      placeholder="Write your requirements..."
                     ></textarea>
                   </div>
 
                   <div className="text-center">
                     <button
                       type="submit"
-                      className="btn btn-success btn-lg"
+                      className="btn btn-primary btn-lg"
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? "Sending..." : "Send Inquiry"}
