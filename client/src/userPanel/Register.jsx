@@ -1,160 +1,289 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
 
 function Register() {
+  const [step, setStep] = useState(1); // 1 = form, 2 = otp
+  const [otp, setOtp] = useState("");
+
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
+    address: "",
     password: "",
     confirmPassword: "",
+    image: null,
   });
 
+  const [errors, setErrors] = useState({});
+  const [preview, setPreview] = useState(null);
+
+  // Regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const passwordRegex =
+    /^(?=.*[0-9])(?=.*[@$!%*#?&])[A-Za-z0-9@$!%*#?&]{8,}$/;
+
+  // ======================
+  // HANDLE CHANGE
+  // ======================
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value, files } = e.target;
+
+    if (name === "image") {
+      const file = files[0];
+      setForm({ ...form, image: file });
+      setPreview(URL.createObjectURL(file));
+      return;
+    }
+
+    setForm({ ...form, [name]: value });
+
+    let newErrors = { ...errors };
+
+    if (name === "email") {
+      if (!emailRegex.test(value)) {
+        newErrors.email = "Invalid email format";
+      } else {
+        delete newErrors.email;
+      }
+    }
+
+    if (name === "password") {
+      if (!passwordRegex.test(value)) {
+        newErrors.password =
+          "Min 8 chars, 1 number & 1 special character required";
+      } else {
+        delete newErrors.password;
+      }
+    }
+
+    if (name === "confirmPassword") {
+      if (value !== form.password) {
+        newErrors.confirmPassword = "Passwords do not match";
+      } else {
+        delete newErrors.confirmPassword;
+      }
+    }
+
+    setErrors(newErrors);
   };
 
-  const handleSubmit = (e) => {
+  // ======================
+  // SEND OTP
+  // ======================
+  const sendOtp = async (e) => {
     e.preventDefault();
+
+    if (Object.keys(errors).length > 0) {
+      alert("Please fix errors first");
+      return;
+    }
 
     if (form.password !== form.confirmPassword) {
       alert("Passwords do not match");
       return;
     }
 
-    console.log(form);
-    // connect backend / API here
+    try {
+      await axios.post("http://localhost:5000/api/auth/send-otp", form);
+      setStep(2);
+      alert("OTP sent to email");
+    } catch (err) {
+      alert(err.response?.data?.message || "Error sending OTP");
+    }
+  };
+
+  // ======================
+  // VERIFY OTP + REGISTER
+  // ======================
+  const verifyOtp = async () => {
+    try {
+      const formData = new FormData();
+
+      Object.keys(form).forEach((key) => {
+        formData.append(key, form[key]);
+      });
+
+      formData.append("otp", otp);
+
+      await axios.post(
+        "http://localhost:5000/api/auth/verify-otp",
+        formData
+      );
+
+      alert("Registration successful");
+
+      // reset
+      setStep(1);
+      setForm({
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        password: "",
+        confirmPassword: "",
+        image: null,
+      });
+      setPreview(null);
+      setOtp("");
+    } catch (err) {
+      alert(err.response?.data?.message || "OTP verification failed");
+    }
   };
 
   return (
     <>
       <UserHeader />
 
-      {/* Hero Section */}
-      <div className="bg-primary text-light py-5">
-        <div className="container text-center">
-          <div className="mb-3">
-            <i className="bi bi-person-check-fill fs-1"></i>
-          </div>
-          <h2 className="fw-bold mb-2">Create Account</h2>
-          <p className="opacity-75 fs-6 mb-4">
-            Join Sialkot Export Mella and grow your business globally
-          </p>
-          <div className="d-flex justify-content-center">
-            <span
-              className="bg-light"
-              style={{ width: "60px", height: "3px" }}
-            ></span>
-          </div>
-        </div>
-      </div>
-
-
-
-      {/* Register Form */}
       <div className="container my-5">
         <div className="row justify-content-center">
-          <div className="col-md-6 col-lg-5">
-            <div className="card shadow-lg border-0 rounded-4">
-              <div className="card-body p-4">
-                <h4 className="text-center fw-bold mb-4">
-                  User Registration
-                </h4>
+          <div className="col-md-8">
+            <div className="card p-4 shadow">
+              <h3 className="text-center mb-4">
+                {step === 1 ? "Register" : "OTP Verification"}
+              </h3>
 
-                <form onSubmit={handleSubmit}>
-                  {/* Full Name */}
-                  <div className="mb-3">
-                    <label className="form-label">Full Name</label>
-                    <div className="input-group">
-                      <span className="input-group-text">
-                        <i className="bi bi-person"></i>
-                      </span>
+              {/* ================= FORM STEP ================= */}
+              {step === 1 && (
+                <form onSubmit={sendOtp}>
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Full Name"
+                    className="form-control mb-3"
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    className="form-control"
+                    onChange={handleChange}
+                    required
+                  />
+                  {errors.email && (
+                    <small className="text-danger">{errors.email}</small>
+                  )}
+
+                  {/* Phone + Address */}
+                  <div className="row mt-3">
+                    <div className="col-md-6">
                       <input
                         type="text"
-                        name="name"
+                        name="phone"
+                        placeholder="Phone"
                         className="form-control"
-                        placeholder="Enter your full name"
-                        value={form.name}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <input
+                        type="text"
+                        name="address"
+                        placeholder="Address"
+                        className="form-control"
                         onChange={handleChange}
                         required
                       />
                     </div>
                   </div>
 
-                  {/* Email */}
-                  <div className="mb-3">
-                    <label className="form-label">Email Address</label>
-                    <div className="input-group">
-                      <span className="input-group-text">
-                        <i className="bi bi-envelope"></i>
-                      </span>
-                      <input
-                        type="email"
-                        name="email"
-                        className="form-control"
-                        placeholder="Enter your email"
-                        value={form.email}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
+                  {/* Image */}
+                  <input
+                    type="file"
+                    name="image"
+                    className="form-control mt-3"
+                    onChange={handleChange}
+                  />
+
+                  {preview && (
+                    <img
+                      src={preview}
+                      alt="preview"
+                      style={{
+                        width: "100px",
+                        marginTop: "10px",
+                        borderRadius: "10px",
+                      }}
+                    />
+                  )}
+
                   {/* Password */}
-                  <div className="mb-3">
-                    <label className="form-label">Password</label>
-                    <div className="input-group">
-                      <span className="input-group-text">
-                        <i className="bi bi-lock"></i>
-                      </span>
+                  <div className="row mt-3">
+                    <div className="col-md-6">
                       <input
                         type="password"
                         name="password"
+                        placeholder="Password"
                         className="form-control"
-                        placeholder="Create password"
-                        value={form.password}
                         onChange={handleChange}
                         required
                       />
+                      {errors.password && (
+                        <small className="text-danger">
+                          {errors.password}
+                        </small>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Confirm Password */}
-                  <div className="mb-3">
-                    <label className="form-label">Confirm Password</label>
-                    <div className="input-group">
-                      <span className="input-group-text">
-                        <i className="bi bi-shield-lock"></i>
-                      </span>
+                    <div className="col-md-6">
                       <input
                         type="password"
                         name="confirmPassword"
+                        placeholder="Confirm Password"
                         className="form-control"
-                        placeholder="Re-enter password"
-                        value={form.confirmPassword}
                         onChange={handleChange}
                         required
                       />
+                      {errors.confirmPassword && (
+                        <small className="text-danger">
+                          {errors.confirmPassword}
+                        </small>
+                      )}
                     </div>
                   </div>
 
-                  {/* Submit */}
-                  <button className="btn btn-primary w-100 py-2 fw-semibold">
-                    Create Account
+                  <button className="btn btn-primary w-100 mt-4">
+                    Send OTP
                   </button>
                 </form>
+              )}
 
-                {/* Login Link */}
-                <p className="text-center mt-4 mb-0">
-                  Already have an account?{" "}
-                  <Link
-                    to="/user-login"
-                    className="text-decoration-none fw-semibold"
+              {/* ================= OTP STEP ================= */}
+              {step === 2 && (
+                <div>
+                  <p className="text-center">
+                    Enter OTP sent to your email
+                  </p>
+
+                  <input
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="Enter OTP"
+                    className="form-control mb-3"
+                  />
+
+                  <button
+                    className="btn btn-success w-100"
+                    onClick={verifyOtp}
                   >
-                    Login
-                  </Link>
-                </p>
-              </div>
+                    Verify & Register
+                  </button>
+                </div>
+              )}
+
+              {/* Login link */}
+              <p className="text-center mt-3">
+                Already have account?{" "}
+                <Link to="/user-login">Login</Link>
+              </p>
             </div>
           </div>
         </div>
