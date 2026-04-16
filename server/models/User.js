@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema(
     },
 
     image: {
-      type: String, // store filename or URL
+      type: String, 
     },
   },
   { timestamps: true }
