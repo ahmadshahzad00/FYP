@@ -71,9 +71,6 @@ function Register() {
     setErrors(newErrors);
   };
 
-  // ======================
-  // SEND OTP
-  // ======================
   const sendOtp = async (e) => {
     e.preventDefault();
 
@@ -96,9 +93,6 @@ function Register() {
     }
   };
 
-  // ======================
-  // VERIFY OTP + REGISTER
-  // ======================
   const verifyOtp = async () => {
     try {
       const formData = new FormData();
@@ -135,163 +129,170 @@ function Register() {
   };
 
   return (
-    <>
-      <UserHeader />
+  <>
+    <UserHeader />
 
-      <div className="container my-5">
-        <div className="row justify-content-center">
-          <div className="col-md-8">
-            <div className="card p-4 shadow">
-              <h3 className="text-center mb-4">
-                {step === 1 ? "Register" : "OTP Verification"}
-              </h3>
+    <div className="bg-primary text-white py-5 text-center shadow-sm">
+      <div className="container">
+        <h1 className="fw-bold display-5">Create Your Account</h1>
+        <p className="lead mt-2">
+          Join us today and explore top-quality products from Sialkot marketplace.
+        </p>
+      </div>
+    </div>
 
-              {/* ================= FORM STEP ================= */}
-              {step === 1 && (
-                <form onSubmit={sendOtp}>
-                  <input
-                    type="text"
-                    name="name"
-                    placeholder="Full Name"
-                    className="form-control mb-3"
-                    onChange={handleChange}
-                    required
-                  />
+    <div className="container my-5">
+      <div className="row justify-content-center">
+        <div className="col-md-8">
+          <div
+            className="card p-4 shadow"
+            style={{ borderRadius: "15px" }}
+          >
+            <h3 className="text-center mb-4">
+              {step === 1 ? "Register" : "OTP Verification"}
+            </h3>
 
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email"
-                    className="form-control"
-                    onChange={handleChange}
-                    required
-                  />
-                  {errors.email && (
-                    <small className="text-danger">{errors.email}</small>
-                  )}
+            {step === 1 && (
+              <form onSubmit={sendOtp}>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Full Name"
+                  className="form-control mb-3"
+                  onChange={handleChange}
+                  required
+                />
 
-                  {/* Phone + Address */}
-                  <div className="row mt-3">
-                    <div className="col-md-6">
-                      <input
-                        type="text"
-                        name="phone"
-                        placeholder="Phone"
-                        className="form-control"
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  className="form-control"
+                  onChange={handleChange}
+                  required
+                />
+                {errors.email && (
+                  <small className="text-danger">{errors.email}</small>
+                )}
 
-                    <div className="col-md-6">
-                      <input
-                        type="text"
-                        name="address"
-                        placeholder="Address"
-                        className="form-control"
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Image */}
-                  <input
-                    type="file"
-                    name="image"
-                    className="form-control mt-3"
-                    onChange={handleChange}
-                  />
-
-                  {preview && (
-                    <img
-                      src={preview}
-                      alt="preview"
-                      style={{
-                        width: "100px",
-                        marginTop: "10px",
-                        borderRadius: "10px",
-                      }}
+                <div className="row mt-3">
+                  <div className="col-md-6">
+                    <input
+                      type="text"
+                      name="phone"
+                      placeholder="Phone"
+                      className="form-control"
+                      onChange={handleChange}
+                      required
                     />
-                  )}
-
-                  {/* Password */}
-                  <div className="row mt-3">
-                    <div className="col-md-6">
-                      <input
-                        type="password"
-                        name="password"
-                        placeholder="Password"
-                        className="form-control"
-                        onChange={handleChange}
-                        required
-                      />
-                      {errors.password && (
-                        <small className="text-danger">
-                          {errors.password}
-                        </small>
-                      )}
-                    </div>
-
-                    <div className="col-md-6">
-                      <input
-                        type="password"
-                        name="confirmPassword"
-                        placeholder="Confirm Password"
-                        className="form-control"
-                        onChange={handleChange}
-                        required
-                      />
-                      {errors.confirmPassword && (
-                        <small className="text-danger">
-                          {errors.confirmPassword}
-                        </small>
-                      )}
-                    </div>
                   </div>
 
-                  <button className="btn btn-primary w-100 mt-4">
-                    Send OTP
-                  </button>
-                </form>
-              )}
-
-              {/* ================= OTP STEP ================= */}
-              {step === 2 && (
-                <div>
-                  <p className="text-center">
-                    Enter OTP sent to your email
-                  </p>
-
-                  <input
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="Enter OTP"
-                    className="form-control mb-3"
-                  />
-
-                  <button
-                    className="btn btn-success w-100"
-                    onClick={verifyOtp}
-                  >
-                    Verify & Register
-                  </button>
+                  <div className="col-md-6">
+                    <input
+                      type="text"
+                      name="address"
+                      placeholder="Address"
+                      className="form-control"
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
                 </div>
-              )}
 
-              {/* Login link */}
-              <p className="text-center mt-3">
-                Already have account?{" "}
-                <Link to="/user-login">Login</Link>
-              </p>
-            </div>
+                <input
+                  type="file"
+                  name="image"
+                  className="form-control mt-3"
+                  onChange={handleChange}
+                />
+
+                {preview && (
+                  <img
+                    src={preview}
+                    alt="preview"
+                    style={{
+                      width: "100px",
+                      marginTop: "10px",
+                      borderRadius: "10px",
+                    }}
+                  />
+                )}
+
+                <div className="row mt-3">
+                  <div className="col-md-6">
+                    <input
+                      type="password"
+                      name="password"
+                      placeholder="Password"
+                      className="form-control"
+                      onChange={handleChange}
+                      required
+                    />
+                    {errors.password && (
+                      <small className="text-danger">
+                        {errors.password}
+                      </small>
+                    )}
+                  </div>
+
+                  <div className="col-md-6">
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      placeholder="Confirm Password"
+                      className="form-control"
+                      onChange={handleChange}
+                      required
+                    />
+                    {errors.confirmPassword && (
+                      <small className="text-danger">
+                        {errors.confirmPassword}
+                      </small>
+                    )}
+                  </div>
+                </div>
+
+                <button className="btn btn-primary w-100 mt-4">
+                  Send OTP
+                </button>
+              </form>
+            )}
+
+            {/* ================= OTP STEP ================= */}
+            {step === 2 && (
+              <div>
+                <p className="text-center">
+                  Enter OTP sent to your email
+                </p>
+
+                <input
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="Enter OTP"
+                  className="form-control mb-3"
+                />
+
+                <button
+                  className="btn btn-success w-100"
+                  onClick={verifyOtp}
+                >
+                  Verify & Register
+                </button>
+              </div>
+            )}
+
+            <p className="text-center mt-3">
+              Already have account?{" "}
+              <Link to="/user-login">Login</Link>
+            </p>
           </div>
         </div>
       </div>
+    </div>
 
-      <UserFooter />
-    </>
-  );
+    <UserFooter />
+  </>
+);
 }
 
 export default Register;

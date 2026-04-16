@@ -18,7 +18,7 @@ app.use("/uploads", express.static("uploads"));
 
 //  ROUTES
 app.use("/api/admin", authAdmin);
-app.use("/api/auth", authUser); // ✅ IMPORTANT for OTP system
+app.use("/api/auth", authUser);
 
 connectDB();
 
