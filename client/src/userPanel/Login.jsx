@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
 
@@ -9,14 +10,41 @@ function Login() {
     password: "",
   });
 
+  const [loading, setLoading] = useState(false);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  // ======================
+  // 🔐 LOGIN SUBMIT
+  // ======================
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(form);
-    // connect backend here
+
+    setLoading(true);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/auth/login",
+        form
+      );
+
+      // ✅ Success
+      alert(res.data.message);
+
+      // Save token + user
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      // Redirect (change if needed)
+      window.location.href = "/";
+    } catch (err) {
+      console.log(err.response);
+      alert(err.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,7 +66,6 @@ function Login() {
           </div>
         </div>
       </div>
-
 
       {/* Login Form */}
       <div className="container my-5">
@@ -91,7 +118,7 @@ function Login() {
 
                   {/* Options */}
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    <div className="form-check">
+                    {/* <div className="form-check">
                       <input
                         className="form-check-input"
                         type="checkbox"
@@ -103,23 +130,32 @@ function Login() {
                       >
                         Remember me
                       </label>
-                    </div>
+                    </div> */}
 
-                    <Link to="/forgot-password" className="small text-decoration-none">
+                    <Link
+                      to="/forgot-password"
+                      className="small text-decoration-none"
+                    >
                       Forgot Password?
                     </Link>
                   </div>
 
                   {/* Button */}
-                  <button className="btn btn-primary w-100 py-2 fw-semibold">
-                    Login
+                  <button
+                    className="btn btn-primary w-100 py-2 fw-semibold"
+                    disabled={loading}
+                  >
+                    {loading ? "Logging in..." : "Login"}
                   </button>
                 </form>
 
                 {/* Register */}
                 <p className="text-center mt-4 mb-0">
                   Don’t have an account?{" "}
-                  <Link to="/user-register" className="text-decoration-none fw-semibold">
+                  <Link
+                    to="/user-register"
+                    className="text-decoration-none fw-semibold"
+                  >
                     Register
                   </Link>
                 </p>
