@@ -1,105 +1,156 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
-import profileImage from "../assets/image.png";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 function UserProfile() {
+  const [user, setUser] = useState(null);
+  const [preview, setPreview] = useState(null);
+
+  const navigate = useNavigate();
+
+  /* ================= LOAD USER ================= */
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+
+    if (!storedUser || !token) {
+      navigate("/user-login");
+      return;
+    }
+
+    setUser(JSON.parse(storedUser));
+  }, [navigate]);
+
+  /* ================= IMAGE UPLOAD ================= */
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setPreview(URL.createObjectURL(file));
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/auth/upload-profile",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      // update localStorage user
+      const updatedUser = {
+        ...user,
+        image: res.data.image,
+      };
+
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      alert("Profile image updated successfully");
+    } catch (err) {
+      alert("Image upload failed");
+    }
+  };
+
+  if (!user) return null;
+
   return (
     <>
       <UserHeader />
 
-      {/* ===== Profile Banner Section ===== */}
+      {/* ===== HEADER ===== */}
       <div
-        className="py-5 text-light text-center"
+        className="py-5 text-white text-center"
         style={{
-            background: "linear-gradient(90deg, #0d6efd, #084298)",
+          background: "linear-gradient(90deg, #0d6efd, #084298)",
         }}
-        >
+      >
         <div className="container">
-            <h2 className="fw-bold mb-2">My Profile</h2>
-            <p className="mb-0 opacity-75">
-            Manage your personal information and account details
-            </p>
+          <h2 className="fw-bold">My Profile</h2>
+          <p className="mb-0 opacity-75">
+            Manage your account information
+          </p>
         </div>
-        </div>
+      </div>
 
-      {/* ===== Profile Content ===== */}
+      {/* ===== CONTENT ===== */}
       <div className="container my-5">
         <div className="row g-4">
 
-          {/* Left Profile Card */}
+          {/* LEFT CARD */}
           <div className="col-md-4">
             <div className="card shadow-sm text-center p-4">
-              <img
-                src={profileImage}
-                alt="User"
-                className="rounded-circle mx-auto mb-3 border"
-                style={{
-                  width: "140px",
-                  height: "140px",
-                  objectFit: "cover",
-                }}
-              />
 
-              <h4 className="fw-bold mb-0">Ahmad Shahzad</h4>
-              <p className="text-muted">Registered User</p>
+              {/* PROFILE IMAGE */}
+              <label style={{ cursor: "pointer" }}>
+                <img
+                  src={
+                    preview ||
+                    (user.image
+                      ? `http://localhost:5000/uploads/userProfile/${user.image}`
+                      : "https://cdn-icons-png.flaticon.com/512/149/149071.png")
+                  }
+                  alt="Profile"
+                  className="rounded-circle border mb-3"
+                  style={{
+                    width: "140px",
+                    height: "140px",
+                    objectFit: "cover",
+                  }}
+                />
 
-              <button className="btn btn-outline-primary btn-sm mt-2">
-                <i className="bi bi-pencil-square me-1"></i> Edit Profile
-              </button>
+                <input
+                  type="file"
+                  hidden
+                  onChange={handleImageUpload}
+                />
+              </label>
+
+              <h5 className="fw-bold">{user.name}</h5>
+
+              <p className="text-muted mb-0">
+                Member since{" "}
+                {new Date(user.createdAt).toLocaleDateString()}
+              </p>
             </div>
           </div>
 
-          {/* Right Details Card */}
+          {/* RIGHT CARD */}
           <div className="col-md-8">
             <div className="card shadow-sm p-4">
+
               <h5 className="fw-bold border-bottom pb-2 mb-4">
                 Personal Information
               </h5>
 
               <div className="row mb-3">
-                <div className="col-sm-6">
+                <div className="col-md-6">
                   <p className="text-muted mb-1">Full Name</p>
-                  <p className="fw-semibold">Ahmad Shahzad</p>
+                  <p className="fw-semibold">{user.name}</p>
                 </div>
-                <div className="col-sm-6">
-                  <p className="text-muted mb-1">Username</p>
-                  <p className="fw-semibold">ahmad123</p>
-                </div>
-              </div>
 
-              <div className="row mb-3">
-                <div className="col-sm-6">
+                <div className="col-md-6">
                   <p className="text-muted mb-1">Email</p>
-                  <p className="fw-semibold">ahmad@email.com</p>
-                </div>
-                <div className="col-sm-6">
-                  <p className="text-muted mb-1">Phone</p>
-                  <p className="fw-semibold">+92 300 1234567</p>
+                  <p className="fw-semibold">{user.email}</p>
                 </div>
               </div>
 
               <div className="row mb-3">
-                <div className="col-sm-12">
+                <div className="col-md-6">
+                  <p className="text-muted mb-1">Phone</p>
+                  <p className="fw-semibold">{user.phone}</p>
+                </div>
+
+                <div className="col-md-6">
                   <p className="text-muted mb-1">Address</p>
-                  <p className="fw-semibold">
-                    Sialkot, Punjab, Pakistan
-                  </p>
-                </div>
-              </div>
-
-              <h5 className="fw-bold border-bottom pb-2 mt-4 mb-3">
-                Account Details
-              </h5>
-
-              <div className="row">
-                <div className="col-sm-6">
-                  <p className="text-muted mb-1">Account Status</p>
-                  <span className="badge bg-success">Active</span>
-                </div>
-                <div className="col-sm-6">
-                  <p className="text-muted mb-1">Member Since</p>
-                  <p className="fw-semibold">January 2025</p>
+                  <p className="fw-semibold">{user.address}</p>
                 </div>
               </div>
 

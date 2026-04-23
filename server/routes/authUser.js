@@ -1,16 +1,17 @@
 import express from "express";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
-import multer from "multer";
-import path from "path";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
+import multer from "multer";
+import path from "path";
 
 const router = express.Router();
 
+/* ================= MULTER CONFIG ================= */
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/userProfile");
+    cb(null, "uploads/userProfile"); // your path
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -19,44 +20,39 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+/* ================= MAIL ================= */
 const transporter = nodemailer.createTransport({
   service: "gmail",
-    auth: {
-      user: "iamahmadshahzad228576@gmail.com",
-      pass: "rpkzvrawsgefuhrl",
-    },
-
+  auth: {
+    user: "iamahmadshahzad228576@gmail.com",
+    pass: "rpkzvrawsgefuhrl",
+  },
 });
 
-const otpStore = {}; 
+const otpStore = {};
 
+/* ================= SEND OTP ================= */
 router.post("/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
 
-    // check existing user
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(400).json({ message: "Email already exists" });
     }
 
-    // generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000);
 
     otpStore[email] = {
       otp,
-      expire: Date.now() + 2 * 60 * 1000, // 2 minutes
+      expire: Date.now() + 2 * 60 * 1000,
       data: req.body,
     };
 
-    // send email
     await transporter.sendMail({
       to: email,
       subject: "OTP Verification",
-      html: `
-        <h2>Your OTP is: ${otp}</h2>
-        <p>This OTP is valid for 2 minutes.</p>
-      `,
+      html: `<h2>Your OTP is: ${otp}</h2><p>Valid for 2 minutes</p>`,
     });
 
     res.json({ message: "OTP sent successfully" });
@@ -65,7 +61,8 @@ router.post("/send-otp", async (req, res) => {
   }
 });
 
-router.post("/verify-otp", upload.single("image"), async (req, res) => {
+/* ================= VERIFY OTP ================= */
+router.post("/verify-otp", async (req, res) => {
   try {
     const { email, otp } = req.body;
 
@@ -85,23 +82,20 @@ router.post("/verify-otp", upload.single("image"), async (req, res) => {
 
     const { name, phone, address, password } = record.data;
 
-    // hash password
     const hashed = await bcrypt.hash(password, 10);
 
-    // create user 
     const user = new User({
       name,
       email,
       phone,
       address,
       password: hashed,
-      image: req.file ? req.file.filename : "",
-      isVerified: true, 
+      isVerified: true,
+      image: "", // initially empty
     });
 
     await user.save();
 
-    // remove OTP after success
     delete otpStore[email];
 
     res.json({ message: "User registered successfully" });
@@ -110,12 +104,10 @@ router.post("/verify-otp", upload.single("image"), async (req, res) => {
   }
 });
 
-/* ================= LOGIN USER ================= */
+/* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // console.log("LOGIN REQUEST:", req.body);
 
     const user = await User.findOne({ email });
 
@@ -125,7 +117,6 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // check verified (only blocks unverified users)
     if (!user.isVerified) {
       return res.status(400).json({
         message: "Please verify your email first",
@@ -140,7 +131,6 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // generate token
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET || "secretkey",
@@ -151,19 +141,46 @@ router.post("/login", async (req, res) => {
       message: "Login successful",
       token,
       user: {
+        _id: user._id,
         name: user.name,
         email: user.email,
-        image: user.image,
+        phone: user.phone,
+        address: user.address,
+        image: user.image, // ✅ include image
+        createdAt: user.createdAt,
       },
     });
   } catch (err) {
-    // console.log("LOGIN ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
-/* router.get("/test", (req, res) => {
-  res.send("Server working");
-}); */
+/* ================= UPLOAD PROFILE IMAGE ================= */
+router.post(
+  "/upload-profile",
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const token = req.headers.authorization.split(" ")[1];
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || "secretkey"
+      );
+
+      const user = await User.findByIdAndUpdate(
+        decoded.id,
+        { image: req.file.filename },
+        { new: true }
+      );
+
+      res.json({
+        message: "Image uploaded successfully",
+        image: user.image,
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
 
 export default router;

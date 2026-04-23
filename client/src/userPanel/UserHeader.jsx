@@ -1,11 +1,28 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import logoImage from "../assets/logo.png";
 
 function UserHeader() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    setUser(null);
+    window.location.href = "/"; // redirect
+  };
+
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm px-4">
       <div className="container-fluid">
+        
         {/* Logo */}
         <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
           <img
@@ -44,8 +61,7 @@ function UserHeader() {
               </Link>
             </li>
 
-            {/* Categories */}
-            <li className="nav-item dropdown">
+            <li className="nav-item">
               <Link className="nav-link fw-semibold" to="/categories">
                 Categories
               </Link>
@@ -67,37 +83,57 @@ function UserHeader() {
               </ul>
             </li>
 
-            {/* User Icon Dropdown */}
+            {/* USER SECTION */}
             <li className="nav-item dropdown">
               <span
-                className="nav-link dropdown-toggle d-flex align-items-center"
+                className="nav-link dropdown-toggle d-flex align-items-center gap-2"
                 role="button"
                 data-bs-toggle="dropdown"
               >
                 <i className="bi bi-person-circle fs-4"></i>
+
+                {/* Show Name if logged in */}
+                {user && <span className="fw-semibold">{user.name}</span>}
               </span>
 
               <ul className="dropdown-menu dropdown-menu-end shadow">
-                <li>
-                  <Link className="dropdown-item" to="/user-login">
-                    <i className="bi bi-box-arrow-in-right me-2"></i> Login
-                  </Link>
-                </li>
-                <li>
-                  <Link className="dropdown-item" to="/user-register">
-                    <i className="bi bi-person-plus me-2"></i> Register
-                  </Link>
-                </li>
-                <li>
-                  <Link className="dropdown-item" to="/userProfile">
-                    <i className="bi bi-person me-2"></i> User Profile
-                  </Link>
-                </li>
-                <li>
-                  <Link className="dropdown-item" to="/business-profile">
-                    <i className="bi bi-building me-2"></i> Business Profile
-                  </Link>
-                </li>
+
+                {/* NOT LOGGED IN */}
+                {!user && (
+                  <>
+                    <li>
+                      <Link className="dropdown-item" to="/user-login">
+                        <i className="bi bi-box-arrow-in-right me-2"></i> Login
+                      </Link>
+                    </li>
+                    <li>
+                      <Link className="dropdown-item" to="/user-register">
+                        <i className="bi bi-person-plus me-2"></i> Register
+                      </Link>
+                    </li>
+                  </>
+                )}
+
+                {/* LOGGED IN */}
+                {user && (
+                  <>
+                    <li>
+                      <Link className="dropdown-item" to="/userProfile">
+                        <i className="bi bi-person me-2"></i> Profile
+                      </Link>
+                    </li>
+
+                    <li>
+                      <button
+                        className="dropdown-item text-danger"
+                        onClick={handleLogout}
+                      >
+                        <i className="bi bi-box-arrow-right me-2"></i> Logout
+                      </button>
+                    </li>
+                  </>
+                )}
+
               </ul>
             </li>
 

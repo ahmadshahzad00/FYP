@@ -13,10 +13,6 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
-      match: [
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        "Please use a valid email address",
-      ],
     },
 
     phone: {
@@ -41,7 +37,8 @@ const userSchema = new mongoose.Schema(
     },
 
     image: {
-      type: String, 
+      type: String,
+      default: "",
     },
   },
   { timestamps: true }
