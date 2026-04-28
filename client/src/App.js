@@ -31,6 +31,8 @@ import FAQs from './userPanel/FAQs';
 import PublicBusinessProfile from './userPanel/PublicBusinessProfile';
 import SendInquiry from './userPanel/sendInquiry';
 
+import ProtectedRoute from "./ProtectedRoute";
+
 
 function App() {
   return (
@@ -46,7 +48,14 @@ function App() {
         <Route path="/aboutus" element={<AboutUs />} />
         <Route path="/trendingProducts" element={<TrendingProducts />} />
         <Route path="/categories" element={<Categories />} />
-        <Route path="/business-register" element={<BusinessRegister />} />
+        <Route 
+          path="/business-register" 
+          element={
+            <ProtectedRoute>
+              <BusinessRegister />
+            </ProtectedRoute>
+          } 
+        />
         <Route path="/business-profile" element={<BusinessProfile />} />
         <Route path="/FAQs" element={<FAQs />} />
         <Route path="/publicBusinessProfile" element={<PublicBusinessProfile />} />

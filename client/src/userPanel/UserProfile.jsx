@@ -8,9 +8,16 @@ function UserProfile() {
   const [user, setUser] = useState(null);
   const [preview, setPreview] = useState(null);
 
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    email: "",
+  });
+
   const navigate = useNavigate();
 
-  /* ================= LOAD USER ================= */
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const token = localStorage.getItem("token");
@@ -20,22 +27,54 @@ function UserProfile() {
       return;
     }
 
-    setUser(JSON.parse(storedUser));
+    const parsedUser = JSON.parse(storedUser);
+    setUser(parsedUser);
+
+    setFormData({
+      name: parsedUser.name,
+      phone: parsedUser.phone,
+      address: parsedUser.address,
+      email: parsedUser.email,
+    });
   }, [navigate]);
 
-  /* ================= IMAGE UPLOAD ================= */
+  /* IMAGE UPLOAD */
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setPreview(URL.createObjectURL(file));
 
-    const formData = new FormData();
-    formData.append("image", file);
+    const formDataImg = new FormData();
+    formDataImg.append("image", file);
 
     try {
       const res = await axios.post(
         "http://localhost:5000/api/auth/upload-profile",
+        formDataImg,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      const updatedUser = { ...user, image: res.data.image };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    } catch {
+      alert("Upload failed");
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleUpdate = async () => {
+    try {
+      const res = await axios.put(
+        "http://localhost:5000/api/auth/edit-profile",
         formData,
         {
           headers: {
@@ -44,18 +83,13 @@ function UserProfile() {
         }
       );
 
-      // update localStorage user
-      const updatedUser = {
-        ...user,
-        image: res.data.image,
-      };
+      setUser(res.data.user);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-
-      alert("Profile image updated successfully");
+      setShowModal(false);
+      alert("Profile updated");
     } catch (err) {
-      alert("Image upload failed");
+      alert(err.response?.data?.message || "Update failed");
     }
   };
 
@@ -65,22 +99,17 @@ function UserProfile() {
     <>
       <UserHeader />
 
-      {/* ===== HEADER ===== */}
+      {/* HEADER */}
       <div
         className="py-5 text-white text-center"
-        style={{
-          background: "linear-gradient(90deg, #0d6efd, #084298)",
-        }}
+        style={{ background: "linear-gradient(90deg, #0d6efd, #084298)" }}
       >
         <div className="container">
           <h2 className="fw-bold">My Profile</h2>
-          <p className="mb-0 opacity-75">
-            Manage your account information
-          </p>
+          <p className="opacity-75">Manage your account information</p>
         </div>
       </div>
 
-      {/* ===== CONTENT ===== */}
       <div className="container my-5">
         <div className="row g-4">
 
@@ -88,7 +117,6 @@ function UserProfile() {
           <div className="col-md-4">
             <div className="card shadow-sm text-center p-4">
 
-              {/* PROFILE IMAGE */}
               <label style={{ cursor: "pointer" }}>
                 <img
                   src={
@@ -97,28 +125,27 @@ function UserProfile() {
                       ? `http://localhost:5000/uploads/userProfile/${user.image}`
                       : "https://cdn-icons-png.flaticon.com/512/149/149071.png")
                   }
-                  alt="Profile"
                   className="rounded-circle border mb-3"
-                  style={{
-                    width: "140px",
-                    height: "140px",
-                    objectFit: "cover",
-                  }}
+                  style={{ width: 140, height: 140, objectFit: "cover" }}
+                  alt=""
                 />
-
-                <input
-                  type="file"
-                  hidden
-                  onChange={handleImageUpload}
-                />
+                <input type="file" hidden onChange={handleImageUpload} />
               </label>
 
               <h5 className="fw-bold">{user.name}</h5>
 
-              <p className="text-muted mb-0">
+              <p className="text-muted">
                 Member since{" "}
                 {new Date(user.createdAt).toLocaleDateString()}
               </p>
+
+              {/* EDIT BUTTON AT BOTTOM */}
+              <button
+                className="btn btn-outline-primary btn-sm mt-2"
+                onClick={() => setShowModal(true)}
+              >
+                Edit Profile
+              </button>
             </div>
           </div>
 
@@ -132,25 +159,25 @@ function UserProfile() {
 
               <div className="row mb-3">
                 <div className="col-md-6">
-                  <p className="text-muted mb-1">Full Name</p>
-                  <p className="fw-semibold">{user.name}</p>
+                  <p className="text-muted">Full Name</p>
+                  <p>{user.name}</p>
                 </div>
 
                 <div className="col-md-6">
-                  <p className="text-muted mb-1">Email</p>
-                  <p className="fw-semibold">{user.email}</p>
+                  <p className="text-muted">Email</p>
+                  <p>{user.email}</p>
                 </div>
               </div>
 
-              <div className="row mb-3">
+              <div className="row">
                 <div className="col-md-6">
-                  <p className="text-muted mb-1">Phone</p>
-                  <p className="fw-semibold">{user.phone}</p>
+                  <p className="text-muted">Phone</p>
+                  <p>{user.phone}</p>
                 </div>
 
                 <div className="col-md-6">
-                  <p className="text-muted mb-1">Address</p>
-                  <p className="fw-semibold">{user.address}</p>
+                  <p className="text-muted">Address</p>
+                  <p>{user.address}</p>
                 </div>
               </div>
 
@@ -159,6 +186,77 @@ function UserProfile() {
 
         </div>
       </div>
+
+      {/* MODAL */}
+      {showModal && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", background: "rgba(0,0,0,0.6)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content rounded-4 shadow">
+
+              <div className="modal-header border-0">
+                <h5 className="fw-bold">Edit Profile</h5>
+                <button
+                  className="btn-close"
+                  onClick={() => setShowModal(false)}
+                ></button>
+              </div>
+
+              <div className="modal-body">
+
+                <input
+                  className="form-control mb-3"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Full Name"
+                />
+
+                <input
+                  className="form-control mb-3"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Email"
+                />
+
+                <input
+                  className="form-control mb-3"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="Phone"
+                />
+
+                <input
+                  className="form-control"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Address"
+                />
+
+              </div>
+
+              <div className="modal-footer border-0">
+                <button
+                  className="btn btn-light"
+                  onClick={() => setShowModal(false)}
+                >
+                  Cancel
+                </button>
+
+                <button className="btn btn-primary px-4" onClick={handleUpdate}>
+                  Save Changes
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       <UserFooter />
     </>

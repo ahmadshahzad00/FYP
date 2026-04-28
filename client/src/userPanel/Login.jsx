@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
@@ -12,6 +12,31 @@ function Login() {
 
   const [loading, setLoading] = useState(false);
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // message from ProtectedRoute
+  const message = location.state?.message;
+
+  // where to redirect after login
+  const from = location.state?.from || "/";
+
+  // ✅ Alert visibility
+  const [showMessage, setShowMessage] = useState(true);
+
+  // ✅ Auto hide alert after 4 sec
+  useEffect(() => {
+    if (message) {
+      setShowMessage(true); // reset visibility if new message comes
+
+      const timer = setTimeout(() => {
+        setShowMessage(false);
+      }, 4000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -21,7 +46,6 @@ function Login() {
   // ======================
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setLoading(true);
 
     try {
@@ -37,8 +61,9 @@ function Login() {
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      // Redirect (change if needed)
-      window.location.href = "/";
+      // ✅ Redirect to intended page
+      navigate(from);
+
     } catch (err) {
       console.log(err.response);
       alert(err.response?.data?.message || "Login failed");
@@ -50,6 +75,23 @@ function Login() {
   return (
     <>
       <UserHeader />
+
+      {/* 🔔 DISMISSIBLE ALERT */}
+      {message && showMessage && (
+        <div className="container mt-3">
+          <div
+            className="alert alert-warning alert-dismissible fade show text-center"
+            role="alert"
+          >
+            {message}
+            <button
+              type="button"
+              className="btn-close"
+              onClick={() => setShowMessage(false)}
+            ></button>
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
       <div className="bg-primary text-light py-5">
@@ -116,22 +158,8 @@ function Login() {
                     </div>
                   </div>
 
-                  {/* Options */}
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    {/* <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="rememberMe"
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor="rememberMe"
-                      >
-                        Remember me
-                      </label>
-                    </div> */}
-
+                  {/* Forgot Password */}
+                  <div className="d-flex justify-content-end mb-3">
                     <Link
                       to="/forgot-password"
                       className="small text-decoration-none"

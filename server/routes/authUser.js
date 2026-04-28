@@ -11,7 +11,7 @@ const router = express.Router();
 /* ================= MULTER CONFIG ================= */
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/userProfile"); // your path
+    cb(null, "uploads/userProfile");
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -68,17 +68,11 @@ router.post("/verify-otp", async (req, res) => {
 
     const record = otpStore[email];
 
-    if (!record) {
-      return res.status(400).json({ message: "OTP not found" });
-    }
-
-    if (record.expire < Date.now()) {
+    if (!record) return res.status(400).json({ message: "OTP not found" });
+    if (record.expire < Date.now())
       return res.status(400).json({ message: "OTP expired" });
-    }
-
-    if (record.otp != otp) {
+    if (record.otp != otp)
       return res.status(400).json({ message: "Invalid OTP" });
-    }
 
     const { name, phone, address, password } = record.data;
 
@@ -91,11 +85,10 @@ router.post("/verify-otp", async (req, res) => {
       address,
       password: hashed,
       isVerified: true,
-      image: "", // initially empty
+      image: "",
     });
 
     await user.save();
-
     delete otpStore[email];
 
     res.json({ message: "User registered successfully" });
@@ -111,25 +104,18 @@ router.post("/login", async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user) {
-      return res.status(400).json({
-        message: "Invalid email or password",
-      });
-    }
+    if (!user)
+      return res.status(400).json({ message: "Invalid email or password" });
 
-    if (!user.isVerified) {
-      return res.status(400).json({
-        message: "Please verify your email first",
-      });
-    }
+    if (!user.isVerified)
+      return res
+        .status(400)
+        .json({ message: "Please verify your email first" });
 
     const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isMatch) {
-      return res.status(400).json({
-        message: "Invalid email or password",
-      });
-    }
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid email or password" });
 
     const token = jwt.sign(
       { id: user._id },
@@ -140,15 +126,43 @@ router.post("/login", async (req, res) => {
     res.json({
       message: "Login successful",
       token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: user.address,
-        image: user.image, // ✅ include image
-        createdAt: user.createdAt,
-      },
+      user,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* ================= EDIT PROFILE ================= */
+router.put("/edit-profile", async (req, res) => {
+  try {
+    const token = req.headers.authorization.split(" ")[1];
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "secretkey"
+    );
+
+    const { name, phone, address, email } = req.body;
+
+    // check email already exists
+    const existing = await User.findOne({
+      email,
+      _id: { $ne: decoded.id },
+    });
+
+    if (existing) {
+      return res.status(400).json({ message: "Email already in use" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      decoded.id,
+      { name, phone, address, email },
+      { new: true }
+    );
+
+    res.json({
+      message: "Profile updated successfully",
+      user,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -156,31 +170,27 @@ router.post("/login", async (req, res) => {
 });
 
 /* ================= UPLOAD PROFILE IMAGE ================= */
-router.post(
-  "/upload-profile",
-  upload.single("image"),
-  async (req, res) => {
-    try {
-      const token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET || "secretkey"
-      );
+router.post("/upload-profile", upload.single("image"), async (req, res) => {
+  try {
+    const token = req.headers.authorization.split(" ")[1];
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "secretkey"
+    );
 
-      const user = await User.findByIdAndUpdate(
-        decoded.id,
-        { image: req.file.filename },
-        { new: true }
-      );
+    const user = await User.findByIdAndUpdate(
+      decoded.id,
+      { image: req.file.filename },
+      { new: true }
+    );
 
-      res.json({
-        message: "Image uploaded successfully",
-        image: user.image,
-      });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
+    res.json({
+      message: "Image uploaded successfully",
+      image: user.image,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-);
+});
 
 export default router;
