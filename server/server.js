@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import authAdmin from "./routes/authAdmin.js";
 import authUser from "./routes/authUser.js";
+import registerBusinessRoute from "./routes/registerBusiness.js";
 import path from "path";
 
 dotenv.config();
@@ -19,6 +20,7 @@ app.use("/uploads", express.static("uploads"));
 //  ROUTES
 app.use("/api/admin", authAdmin);
 app.use("/api/auth", authUser); 
+app.use("/api/business", registerBusinessRoute);
 
 connectDB();
 

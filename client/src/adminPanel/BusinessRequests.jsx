@@ -1,245 +1,300 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import AdminSidebar from "./AdminSidebar";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 function BusinessRequests() {
   const [requests, setRequests] = useState([]);
-  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selected, setSelected] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    const dummyRequests = [
-      {
-        id: 1,
-        name: "Ali Sports",
-        owner: "Ali Khan",
-        email: "ali@gmail.com",
-        category: "Sports Goods",
-        status: "pending",
-        createdAt: "2026-03-01",
-        description: "Manufacturer of high-quality sports goods from Sialkot.",
-      },
-      {
-        id: 2,
-        name: "Leather Hub",
-        owner: "Usman",
-        email: "usman@gmail.com",
-        category: "Leather",
-        status: "pending",
-        createdAt: "2026-03-05",
-        description: "Exporter of premium leather jackets and bags.",
-      },
-    ];
+  const fetchRequests = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:5000/api/business/all",
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      setRequests(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-    setRequests(dummyRequests);
+  useEffect(() => {
+    fetchRequests();
   }, []);
 
-  const handleView = (id) => {
-    const req = requests.find((r) => r.id === id);
-    if (req) {
-      setSelectedRequest(req);
-      setShowModal(true);
+  const handleAction = async (id, status) => {
+    try {
+      await axios.put(
+        `http://localhost:5000/api/business/${id}/status`,
+        { status },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      fetchRequests();
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleCloseModal = () => {
+  const handleView = (data) => {
+    setSelected(data);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setSelected(null);
     setShowModal(false);
-    setSelectedRequest(null);
-  };
-
-  const handleAction = (id, action) => {
-    const updated = requests.map((req) =>
-      req.id === id ? { ...req, status: action } : req
-    );
-    setRequests(updated);
-
-    if (selectedRequest?.id === id) {
-      setSelectedRequest({ ...selectedRequest, status: action });
-    }
   };
 
   return (
     <div className="d-flex min-vh-100 bg-light">
       <AdminSidebar />
 
-      <div className="flex-grow-1 p-4">
-        <h2 className="text-center mb-4">Business Register Requests</h2>
+      <div className="container-fluid p-4">
 
-        <div className="table-responsive shadow-sm bg-white rounded">
-          <table className="table table-striped table-hover mb-0">
-            <thead className="table-dark">
-              <tr>
-                <th>ID</th>
-                <th>Business</th>
-                <th>Owner</th>
-                <th>Email</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+        {/* HEADER */}
+        <div className="mb-3">
+          <h3 className="fw-bold">Business Requests</h3>
+        </div>
 
-            <tbody>
-              {requests.map((req) => (
-                <tr key={req.id}>
-                  <td>{req.id}</td>
+        {/* TABLE */}
+        <div className="card shadow-sm border-0">
+          <div className="card-body p-0">
 
-                  <td>
-                    <div className="fw-bold">{req.name}</div>
-                    <small className="text-muted">Requested</small>
-                  </td>
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
 
-                  <td>{req.owner}</td>
-                  <td>{req.email}</td>
-                  <td>{req.category}</td>
+                <thead className="table-dark">
+                  <tr>
+                    <th>Company</th>
+                    <th>Owner</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
 
-                  <td>
-                    <span
-                      className={`badge ${
-                        req.status === "approved"
-                          ? "bg-success"
-                          : req.status === "rejected"
-                          ? "bg-danger"
-                          : "bg-warning text-dark"
-                      }`}
-                    >
-                      {req.status}
-                    </span>
-                  </td>
+                <tbody>
+                  {requests.map((r) => (
+                    <tr key={r._id}>
+                      <td className="fw-semibold">{r.companyName}</td>
+                      <td>{r.ownerName}</td>
+                      <td>{r.category}</td>
 
-                  <td>
-                    <div className="btn-group btn-group-sm">
-                      <button
-                        className="btn btn-info"
-                        onClick={() => handleView(req.id)}
-                      >
-                        <i className="bi bi-eye"></i> View
-                      </button>
+                      <td>
+                        <span
+                          className={`badge ${
+                            r.status === "approved"
+                              ? "bg-success"
+                              : r.status === "rejected"
+                              ? "bg-danger"
+                              : "bg-warning text-dark"
+                          }`}
+                        >
+                          {r.status}
+                        </span>
+                      </td>
 
-                      {req.status === "pending" && (
-                        <>
-                          <button
-                            className="btn btn-success"
-                            onClick={() =>
-                              handleAction(req.id, "approved")
-                            }
-                          >
-                            Approve
-                          </button>
+                      <td>
+                        <button
+                          className="btn btn-sm btn-primary me-2"
+                          onClick={() => handleView(r)}
+                        >
+                          View
+                        </button>
 
-                          <button
-                            className="btn btn-danger"
-                            onClick={() =>
-                              handleAction(req.id, "rejected")
-                            }
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {r.status === "pending" && (
+                          <>
+                            <button
+                              className="btn btn-sm btn-success me-2"
+                              onClick={() => handleAction(r._id, "approved")}
+                            >
+                              Approve
+                            </button>
 
-              {requests.length === 0 && (
-                <tr>
-                  <td colSpan="7" className="text-center py-4 text-muted">
-                    No requests found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                            <button
+                              className="btn btn-sm btn-danger"
+                              onClick={() => handleAction(r._id, "rejected")}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                      </td>
+
+                    </tr>
+                  ))}
+                </tbody>
+
+              </table>
+            </div>
+
+          </div>
         </div>
       </div>
 
-      {/* MODAL */}
-      {showModal && selectedRequest && (
+      {/* ================= MODAL ================= */}
+      {showModal && selected && (
         <div
           className="modal fade show d-block"
-          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          style={{ background: "rgba(0,0,0,0.5)" }}
         >
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
-              
-              <div className="modal-header">
-                <h5 className="modal-title">Business Details</h5>
-                <button
-                  className="btn-close"
-                  onClick={handleCloseModal}
-                ></button>
+
+              {/* HEADER */}
+              <div className="modal-header bg-dark text-white">
+                <h5 className="modal-title">{selected.companyName}</h5>
+                <button className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
 
+              {/* BODY */}
               <div className="modal-body">
-                <h4 className="mb-2">{selectedRequest.name}</h4>
-                <p className="text-muted">{selectedRequest.description}</p>
 
-                <dl className="row">
-                  <dt className="col-4">Owner</dt>
-                  <dd className="col-8">{selectedRequest.owner}</dd>
+                {/* ✅ LOGO */}
+                {selected.logo && (
+                  <div className="text-center mb-3">
+                    <img
+                      src={`http://localhost:5000/${selected.logo}`}
+                      alt="Logo"
+                      style={{
+                        width: "120px",
+                        height: "120px",
+                        objectFit: "cover",
+                        borderRadius: "10px",
+                        border: "1px solid #ddd",
+                        padding: "5px",
+                      }}
+                    />
+                  </div>
+                )}
 
-                  <dt className="col-4">Email</dt>
-                  <dd className="col-8">{selectedRequest.email}</dd>
+                <div className="row g-3">
 
-                  <dt className="col-4">Category</dt>
-                  <dd className="col-8">{selectedRequest.category}</dd>
+                  <div className="col-md-6">
+                    <strong>Owner</strong>
+                    <p>{selected.ownerName}</p>
+                  </div>
 
-                  <dt className="col-4">Requested At</dt>
-                  <dd className="col-8">{selectedRequest.createdAt}</dd>
+                  <div className="col-md-6">
+                    <strong>Email</strong>
+                    <p>{selected.email}</p>
+                  </div>
 
-                  <dt className="col-4">Status</dt>
-                  <dd className="col-8">
-                    <span
-                      className={`badge ${
-                        selectedRequest.status === "approved"
-                          ? "bg-success"
-                          : selectedRequest.status === "rejected"
-                          ? "bg-danger"
-                          : "bg-warning text-dark"
-                      }`}
-                    >
-                      {selectedRequest.status}
-                    </span>
-                  </dd>
-                </dl>
+                  <div className="col-md-6">
+                    <strong>Phone</strong>
+                    <p>{selected.phone}</p>
+                  </div>
+
+                  <div className="col-md-6">
+                    <strong>WhatsApp</strong>
+                    <p>{selected.whatsapp}</p>
+                  </div>
+
+                  <div className="col-md-6">
+                    <strong>Category</strong>
+                    <p>{selected.category}</p>
+                  </div>
+
+                  <div className="col-md-6">
+                    <strong>NTN</strong>
+                    <p>{selected.ntnNumber}</p>
+                  </div>
+
+                  <div className="col-12">
+                    <strong>Address</strong>
+                    <p>{selected.factoryAddress}</p>
+                  </div>
+
+                  <div className="col-12">
+                    <strong>Products</strong>
+                    <p>{selected.products}</p>
+                  </div>
+
+                  <div className="col-12">
+                    <strong>Description</strong>
+                    <p>{selected.description}</p>
+                  </div>
+
+                  {/* FILES */}
+                  <div className="col-12">
+                    <hr />
+                    <strong>Documents</strong>
+                    <div className="mt-2">
+
+                      <a
+                        className="btn btn-outline-primary btn-sm me-2"
+                        href={`http://localhost:5000/${selected.cnicFront}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        CNIC Front
+                      </a>
+
+                      <a
+                        className="btn btn-outline-primary btn-sm me-2"
+                        href={`http://localhost:5000/${selected.cnicBack}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        CNIC Back
+                      </a>
+
+                      <a
+                        className="btn btn-outline-dark btn-sm"
+                        href={`http://localhost:5000/${selected.chamberMembership}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Chamber PDF
+                      </a>
+
+                    </div>
+                  </div>
+
+                </div>
               </div>
 
+              {/* FOOTER */}
               <div className="modal-footer">
-                {selectedRequest.status === "pending" && (
+                <button className="btn btn-secondary" onClick={closeModal}>
+                  Close
+                </button>
+
+                {selected.status === "pending" && (
                   <>
                     <button
                       className="btn btn-success"
-                      onClick={() =>
-                        handleAction(selectedRequest.id, "approved")
-                      }
+                      onClick={() => handleAction(selected._id, "approved")}
                     >
                       Approve
                     </button>
 
                     <button
                       className="btn btn-danger"
-                      onClick={() =>
-                        handleAction(selectedRequest.id, "rejected")
-                      }
+                      onClick={() => handleAction(selected._id, "rejected")}
                     >
                       Reject
                     </button>
                   </>
                 )}
-
-                <button
-                  className="btn btn-secondary"
-                  onClick={handleCloseModal}
-                >
-                  Close
-                </button>
               </div>
 
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

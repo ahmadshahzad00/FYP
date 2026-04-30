@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
 
@@ -12,16 +13,10 @@ function BusinessRegister() {
     yearEstablished: "",
     factoryAddress: "",
     ntnNumber: "",
-    chamberMembership: "",
-    cnicFront: "",
-    isoCertificate: "",
-    businessLicense: "",
     category: "",
     products: "",
     website: "",
     description: "",
-
-    // Social Media (Optional)
     facebook: "",
     instagram: "",
     twitter: "",
@@ -29,14 +24,50 @@ function BusinessRegister() {
     pinterest: "",
   });
 
+  // ✅ FILE STATES
+  const [chamberFile, setChamberFile] = useState(null);
+  const [cnicFrontFile, setCnicFrontFile] = useState(null);
+  const [cnicBackFile, setCnicBackFile] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  // ✅ SUBMIT FUNCTION (FIXED)
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(formData);
-    alert("Business registration submitted successfully!");
+
+    try {
+      const data = new FormData();
+
+      // TEXT FIELDS
+      Object.keys(formData).forEach((key) => {
+        data.append(key, formData[key]);
+      });
+
+      // FILES
+      data.append("chamberMembership", chamberFile);
+      data.append("cnicFront", cnicFrontFile);
+      data.append("cnicBack", cnicBackFile);
+      if (logoFile) data.append("logo", logoFile);
+
+      await axios.post(
+        "http://localhost:5000/api/business",
+        data,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      alert("Business registration request submitted successfully!");
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.msg || "Submission failed");
+    }
   };
 
   return (
@@ -70,10 +101,6 @@ function BusinessRegister() {
             <div className="card shadow-lg border-0 card-soft">
               <div className="card-body p-4 p-md-5">
 
-                <div className="alert alert-info">
-                  <strong>Business Location:</strong> Sialkot, Pakistan
-                </div>
-
                 <form onSubmit={handleSubmit}>
 
                   {/* BUSINESS INFO */}
@@ -81,143 +108,73 @@ function BusinessRegister() {
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label">Company Name *</label>
-                      <input
-                        type="text"
-                        name="companyName"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
+                      <input type="text" name="companyName" className="form-control" required onChange={handleChange}/>
                     </div>
 
                     <div className="col-md-6">
                       <label className="form-label">Owner / Contact Person *</label>
-                      <input
-                        type="text"
-                        name="ownerName"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
+                      <input type="text" name="ownerName" className="form-control" required onChange={handleChange}/>
                     </div>
 
                     <div className="col-md-6">
                       <label className="form-label">Business Email *</label>
-                      <input
-                        type="email"
-                        name="email"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
+                      <input type="email" name="email" className="form-control" required onChange={handleChange}/>
                     </div>
 
                     <div className="col-md-6">
                       <label className="form-label">Business Phone *</label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
+                      <input type="tel" name="phone" className="form-control" required onChange={handleChange}/>
                     </div>
 
                     <div className="col-md-6">
                       <label className="form-label">WhatsApp Number *</label>
-                      <input
-                        type="tel"
-                        name="whatsapp"
-                        className="form-control"
-                        placeholder="+92XXXXXXXXXX"
-                        required
-                        onChange={handleChange}
-                      />
+                      <input type="tel" name="whatsapp" className="form-control" required onChange={handleChange}/>
                     </div>
 
                     <div className="col-md-6">
                       <label className="form-label">Year Established *</label>
-                      <input
-                        type="number"
-                        name="yearEstablished"
-                        className="form-control"
-                        placeholder="e.g. 2010"
-                        required
-                        onChange={handleChange}
-                      />
+                      <input type="number" name="yearEstablished" className="form-control" required onChange={handleChange}/>
                     </div>
                   </div>
 
                   {/* LEGAL */}
-                  <div className="form-section-title mt-4">
-                    Factory & Legal Verification
-                  </div>
-
+                  <div className="form-section-title mt-4">Factory & Legal Verification</div>
                   <div className="row g-3">
                     <div className="col-12">
                       <label className="form-label">Factory Address *</label>
-                      <input
-                        type="text"
-                        name="factoryAddress"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
+                      <input type="text" name="factoryAddress" className="form-control" required onChange={handleChange}/>
                     </div>
 
                     <div className="col-md-6">
                       <label className="form-label">NTN Number *</label>
-                      <input
-                        type="text"
-                        name="ntnNumber"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
+                      <input type="text" name="ntnNumber" className="form-control" required onChange={handleChange}/>
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">
-                        Chamber of Commerce Membership
-                      </label>
-                      <input type="file" className="form-control" />
+                      <label className="form-label">Chamber Membership (PDF) *</label>
+                      <input type="file" className="form-control" required
+                        onChange={(e) => setChamberFile(e.target.files[0])}/>
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">CNIC Front Picture *</label>
-                      <input type="file" className="form-control" required />
+                      <label className="form-label">CNIC Front *</label>
+                      <input type="file" className="form-control" required
+                        onChange={(e) => setCnicFrontFile(e.target.files[0])}/>
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">CNIC Back Picture *</label>
-                      <input type="file" className="form-control" required />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">ISO Certificate</label>
-                      <input type="file" className="form-control" />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">Business License *</label>
-                      <input type="file" className="form-control" required />
+                      <label className="form-label">CNIC Back *</label>
+                      <input type="file" className="form-control" required
+                        onChange={(e) => setCnicBackFile(e.target.files[0])}/>
                     </div>
                   </div>
 
                   {/* PRODUCTS */}
-                  <div className="form-section-title mt-4">
-                    Products & Category
-                  </div>
-
+                  <div className="form-section-title mt-4">Products & Category</div>
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label">Product Category *</label>
-                      <select
-                        name="category"
-                        className="form-select"
-                        required
-                        onChange={handleChange}
-                      >
+                      <select name="category" className="form-select" required onChange={handleChange}>
                         <option value="">Select Category</option>
                         <option>Sports Goods</option>
                         <option>Leather Products</option>
@@ -230,108 +187,46 @@ function BusinessRegister() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">Products You Manufacture *</label>
-                      <input
-                        type="text"
-                        name="products"
-                        className="form-control"
-                        required
-                        onChange={handleChange}
-                      />
+                      <label className="form-label">Products *</label>
+                      <input type="text" name="products" className="form-control" required onChange={handleChange}/>
                     </div>
                   </div>
 
                   {/* SOCIAL MEDIA */}
-                  <div className="form-section-title mt-4">
-                    Social Media Links (Optional)
-                  </div>
-
+                  <div className="form-section-title mt-4">Social Media Links (Optional)</div>
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <label className="form-label">Facebook</label>
-                      <input
-                        type="url"
-                        name="facebook"
-                        className="form-control"
-                        placeholder="https://facebook.com/yourpage"
-                        onChange={handleChange}
-                      />
+                      <input type="url" name="facebook" className="form-control" placeholder="Facebook" onChange={handleChange}/>
                     </div>
-
                     <div className="col-md-6">
-                      <label className="form-label">Instagram</label>
-                      <input
-                        type="url"
-                        name="instagram"
-                        className="form-control"
-                        placeholder="https://instagram.com/yourpage"
-                        onChange={handleChange}
-                      />
+                      <input type="url" name="instagram" className="form-control" placeholder="Instagram" onChange={handleChange}/>
                     </div>
-
                     <div className="col-md-6">
-                      <label className="form-label">X (Twitter)</label>
-                      <input
-                        type="url"
-                        name="twitter"
-                        className="form-control"
-                        placeholder="https://x.com/yourhandle"
-                        onChange={handleChange}
-                      />
+                      <input type="url" name="twitter" className="form-control" placeholder="Twitter" onChange={handleChange}/>
                     </div>
-
                     <div className="col-md-6">
-                      <label className="form-label">TikTok</label>
-                      <input
-                        type="url"
-                        name="tiktok"
-                        className="form-control"
-                        placeholder="https://tiktok.com/@yourpage"
-                        onChange={handleChange}
-                      />
+                      <input type="url" name="tiktok" className="form-control" placeholder="TikTok" onChange={handleChange}/>
                     </div>
-
                     <div className="col-md-6">
-                      <label className="form-label">Pinterest</label>
-                      <input
-                        type="url"
-                        name="pinterest"
-                        className="form-control"
-                        placeholder="https://pinterest.com/yourbrand"
-                        onChange={handleChange}
-                      />
+                      <input type="url" name="pinterest" className="form-control" placeholder="Pinterest" onChange={handleChange}/>
                     </div>
                   </div>
 
                   {/* EXTRA */}
-                  <div className="form-section-title mt-4">
-                    Additional Details
-                  </div>
-
+                  <div className="form-section-title mt-4">Additional Details</div>
                   <div className="row g-3">
                     <div className="col-12">
-                      <label className="form-label">Company Description</label>
-                      <textarea
-                        name="description"
-                        rows="4"
-                        className="form-control"
-                        onChange={handleChange}
-                      ></textarea>
+                      <textarea name="description" rows="4" className="form-control" onChange={handleChange}></textarea>
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">Website</label>
-                      <input
-                        type="url"
-                        name="website"
-                        className="form-control"
-                        onChange={handleChange}
-                      />
+                      <input type="url" name="website" className="form-control" placeholder="Website" onChange={handleChange}/>
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">Company Logo</label>
-                      <input type="file" className="form-control" />
+                      <label>Company Logo</label>
+                      <input type="file" className="form-control"
+                        onChange={(e) => setLogoFile(e.target.files[0])}/>
                     </div>
                   </div>
 
@@ -342,6 +237,7 @@ function BusinessRegister() {
                   </div>
 
                 </form>
+
               </div>
             </div>
           </div>
