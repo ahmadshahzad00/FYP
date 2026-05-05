@@ -1,28 +1,50 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import logoImage from "../assets/logo.png";
 
 function UserHeader() {
   const [user, setUser] = useState(null);
+  const [hasBusiness, setHasBusiness] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    const token = localStorage.getItem("token");
+
+    if (storedUser && token) {
       setUser(JSON.parse(storedUser));
+      checkBusiness(token);
     }
   }, []);
+
+  const checkBusiness = async (token) => {
+    try {
+      await axios.get("http://localhost:5000/api/business/my-business", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // ✅ If API success → business exists
+      setHasBusiness(true);
+    } catch (err) {
+      // ❌ 404 → no business
+      setHasBusiness(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     setUser(null);
-    window.location.href = "/"; // redirect
+    setHasBusiness(false);
+    window.location.href = "/";
   };
 
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm px-4">
       <div className="container-fluid">
-        
+
         {/* Logo */}
         <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
           <img
@@ -91,8 +113,6 @@ function UserHeader() {
                 data-bs-toggle="dropdown"
               >
                 <i className="bi bi-person-circle fs-4"></i>
-
-                {/* Show Name if logged in */}
                 {user && <span className="fw-semibold">{user.name}</span>}
               </span>
 
@@ -122,6 +142,26 @@ function UserHeader() {
                         <i className="bi bi-person me-2"></i> Profile
                       </Link>
                     </li>
+
+                    {/* ✅ BUSINESS SECTION */}
+                    {hasBusiness && (
+                      <>
+                        <li><hr className="dropdown-divider" /></li>
+
+                        <li className="dropdown-header text-primary fw-bold">
+                          Business
+                        </li>
+
+                        <li>
+                          <Link className="dropdown-item" to="/business-profile">
+                            <i className="bi bi-briefcase me-2"></i>
+                            Business Dashboard
+                          </Link>
+                        </li>
+                      </>
+                    )}
+
+                    <li><hr className="dropdown-divider" /></li>
 
                     <li>
                       <button

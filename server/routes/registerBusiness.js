@@ -33,9 +33,6 @@ const uploadFields = upload.fields([
 
 router.post("/", protect, uploadFields, async (req, res) => {
   try {
-    const data = req.body;
-
-    // ✅ REQUIRED FILE CHECK
     if (
       !req.files?.chamberMembership ||
       !req.files?.cnicFront ||
@@ -48,8 +45,7 @@ router.post("/", protect, uploadFields, async (req, res) => {
 
     const business = new Business({
       userId: req.user.id,
-
-      ...data,
+      ...req.body,
 
       chamberMembership: req.files.chamberMembership[0].path,
       cnicFront: req.files.cnicFront[0].path,
@@ -69,7 +65,28 @@ router.post("/", protect, uploadFields, async (req, res) => {
   }
 });
 
-/* ================= ADMIN: GET ALL REQUESTS ================= */
+/* ================= USER: GET MY BUSINESS ================= */
+
+router.get("/my-business", protect, async (req, res) => {
+  try {
+    const business = await Business.findOne({
+      userId: req.user.id,
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        msg: "No business found",
+      });
+    }
+
+    res.json(business);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+/* ================= ADMIN: GET ALL ================= */
 
 router.get("/all", protect, async (req, res) => {
   try {
@@ -83,7 +100,7 @@ router.get("/all", protect, async (req, res) => {
   }
 });
 
-/* ================= ADMIN: APPROVE / REJECT ================= */
+/* ================= ADMIN STATUS UPDATE ================= */
 
 router.put("/:id/status", protect, async (req, res) => {
   try {
@@ -102,7 +119,10 @@ router.put("/:id/status", protect, async (req, res) => {
     business.status = status;
     await business.save();
 
-    res.json({ msg: "Status updated", business });
+    res.json({
+      msg: "Status updated",
+      business,
+    });
   } catch (err) {
     res.status(500).json({ msg: "Server error" });
   }

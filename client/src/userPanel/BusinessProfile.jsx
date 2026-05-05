@@ -1,57 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
 import productImage from "../assets/image.png";
 
 function BusinessProfile() {
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: "Professional Football",
-      category: "Sports",
-      description: "FIFA standard hand-stitched football",
-      size: "Size 5",
-      colors: "White, Black",
-      price: "$12",
-      method: "Hand-stitched",
-      availableQuantity: 100,
-      image: productImage,
-    },
-    {
-      id: 2,
-      name: "Professional Cricket Bat",
-      category: "Sports",
-      description:
-        "Cricket bat with premium willow wood and ergonomic design",
-      size: "Size 38 inch",
-      colors: "Natural Wood",
-      price: "$150",
-      method: "Hand-Carved",
-      availableQuantity: 100,
-      image: productImage,
-    },
-    {
-      id: 3,
-      name: "Professional Tennis Racket",
-      category: "Sports",
-      description:
-        "Tennis racket with advanced graphite frame and synthetic string",
-      size: "Size 27 inch",
-      colors: "Black, Yellow",
-      price: "$80",
-      method: "Hand-Carved",
-      availableQuantity: 100,
-      image: productImage,
-    },
-  ]);
+  const [businessInfo, setBusinessInfo] = useState(null);
 
-  const businessInfo = {
-    name: "ABC Sports Industries",
-    owner: "Mr. Ahmad Shahzad",
-    email: "contact@abcsports.com",
-    phone: "+92 300 1234567",
-    location: "Sialkot, Pakistan",
-  };
+  const [products, setProducts] = useState([]);
 
   const [form, setForm] = useState({
     name: "",
@@ -65,6 +21,26 @@ function BusinessProfile() {
   });
 
   const [editId, setEditId] = useState(null);
+
+  useEffect(() => {
+    fetchBusiness();
+  }, []);
+
+  const fetchBusiness = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:5000/api/business/my-business",
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      setBusinessInfo(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const openAddModal = () => {
     setForm({
@@ -90,7 +66,7 @@ function BusinessProfile() {
 
     const newProduct = {
       ...form,
-      image: productImage, // default image
+      image: productImage,
     };
 
     if (editId) {
@@ -110,6 +86,18 @@ function BusinessProfile() {
     }
   };
 
+  if (!businessInfo) {
+    return (
+      <>
+        <UserHeader />
+        <div className="container text-center py-5">
+          <h4>Loading Business Profile...</h4>
+        </div>
+        <UserFooter />
+      </>
+    );
+  }
+
   return (
     <>
       <UserHeader />
@@ -117,14 +105,44 @@ function BusinessProfile() {
       {/* HEADER */}
       <section className="profile-header">
         <div className="container d-flex align-items-center">
-          <div className="logo-circle">LOGO</div>
+          <div className="logo-circle">
+            {businessInfo.logo ? (
+              <img
+                src={`http://localhost:5000/${businessInfo.logo}`}
+                alt="logo"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  borderRadius: "50%",
+                }}
+              />
+            ) : (
+              "LOGO"
+            )}
+          </div>
+
           <div className="ms-4">
-            <h3 className="fw-bold mb-1">{businessInfo.name}</h3>
+            <h3 className="fw-bold mb-1">{businessInfo.companyName}</h3>
             <p className="text-muted mb-1">Business Owner Dashboard</p>
+
             <span className="badge bg-primary">
-              <i className="bi bi-geo-alt-fill me-1"></i>
-              {businessInfo.location}
+              {businessInfo.factoryAddress}
             </span>
+
+            <div className="mt-2">
+              <span
+                className={`badge ${
+                  businessInfo.status === "approved"
+                    ? "bg-success"
+                    : businessInfo.status === "rejected"
+                    ? "bg-danger"
+                    : "bg-warning text-dark"
+                }`}
+              >
+                {businessInfo.status}
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -136,6 +154,7 @@ function BusinessProfile() {
             <div className="card shadow-sm border-0">
               <div className="card-header bg-white d-flex justify-content-between">
                 <h5 className="fw-bold mb-0">Products</h5>
+
                 <button
                   className="btn btn-primary btn-sm"
                   data-bs-toggle="modal"
@@ -157,9 +176,11 @@ function BusinessProfile() {
                       <th>Colors</th>
                       <th>Price</th>
                       <th>Method</th>
+                      <th>Qty</th>
                       <th className="text-end">Action</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {products.map((p) => (
                       <tr key={p.id}>
@@ -175,20 +196,27 @@ function BusinessProfile() {
                             }}
                           />
                         </td>
+
                         <td className="fw-semibold">{p.name}</td>
+
                         <td>
                           <span className="badge bg-secondary">
                             {p.category}
                           </span>
                         </td>
+
                         <td>{p.size}</td>
                         <td>{p.colors}</td>
                         <td className="fw-bold text-success">{p.price}</td>
+
                         <td>
                           <span className="badge bg-info text-dark">
                             {p.method}
                           </span>
                         </td>
+
+                        <td>{p.availableQuantity}</td>
+
                         <td className="text-end">
                           <button
                             className="btn btn-outline-secondary btn-sm me-2"
@@ -198,6 +226,7 @@ function BusinessProfile() {
                           >
                             <i className="bi bi-pencil"></i>
                           </button>
+
                           <button
                             className="btn btn-outline-danger btn-sm"
                             onClick={() => handleDelete(p.id)}
@@ -207,14 +236,6 @@ function BusinessProfile() {
                         </td>
                       </tr>
                     ))}
-
-                    {products.length === 0 && (
-                      <tr>
-                        <td colSpan="8" className="text-center text-muted py-4">
-                          No products added
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -226,21 +247,40 @@ function BusinessProfile() {
             <div className="card shadow-sm border-0">
               <div className="card-body">
                 <h6 className="fw-bold mb-3 text-primary">
-                  <i className="bi bi-building me-2"></i>Business Info
+                  Business Information
                 </h6>
 
-                <p>
-                  <strong>Owner:</strong> {businessInfo.owner}
-                </p>
-                <p>
-                  <strong>Email:</strong> {businessInfo.email}
-                </p>
-                <p>
-                  <strong>Phone:</strong> {businessInfo.phone}
-                </p>
-                <p>
-                  <strong>Location:</strong> {businessInfo.location}
-                </p>
+                <p><strong>Owner:</strong> {businessInfo.ownerName}</p>
+                <p><strong>Email:</strong> {businessInfo.email}</p>
+                <p><strong>Phone:</strong> {businessInfo.phone}</p>
+
+                {/* SOCIAL ICONS */}
+                <div className="d-flex gap-3 mt-3">
+                  <a href={businessInfo.facebook} target="_blank">
+                    <i className="bi bi-facebook fs-5 text-primary"></i>
+                  </a>
+
+                  <a href={businessInfo.instagram} target="_blank">
+                    <i className="bi bi-instagram fs-5 text-danger"></i>
+                  </a>
+
+                  <a href={businessInfo.tiktok} target="_blank">
+                    <i className="bi bi-tiktok fs-5 text-dark"></i>
+                  </a>
+
+                  <a href={`https://wa.me/${businessInfo.whatsapp}`}>
+                    <i className="bi bi-whatsapp fs-5 text-success"></i>
+                  </a>
+
+                  <a href={businessInfo.website} target="_blank">
+                    <i className="bi bi-globe fs-5 text-dark"></i>
+                  </a>
+                </div>
+
+                <hr />
+
+                <p><strong>Category:</strong> {businessInfo.category}</p>
+                <p><strong>NTN:</strong> {businessInfo.ntnNumber}</p>
               </div>
             </div>
           </div>
@@ -251,22 +291,21 @@ function BusinessProfile() {
       <div className="modal fade" id="productModal">
         <div className="modal-dialog modal-lg modal-dialog-centered">
           <div className="modal-content">
+
             <div className="modal-header">
               <h5 className="modal-title">
                 {editId ? "Edit Product" : "Add Product"}
               </h5>
-              <button
-                className="btn-close"
-                data-bs-dismiss="modal"
-              ></button>
+              <button className="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <div className="modal-body">
               <div className="row g-3">
+
                 <div className="col-md-6">
-                  <label className="form-label">Product Name</label>
                   <input
                     className="form-control"
+                    placeholder="Product Name"
                     value={form.name}
                     onChange={(e) =>
                       setForm({ ...form, name: e.target.value })
@@ -275,37 +314,20 @@ function BusinessProfile() {
                 </div>
 
                 <div className="col-md-6">
-                  <label className="form-label">Category</label>
-                  <select
-                    className="form-select"
+                  <input
+                    className="form-control"
+                    placeholder="Category"
                     value={form.category}
                     onChange={(e) =>
                       setForm({ ...form, category: e.target.value })
                     }
-                  >
-                    <option value="">Select</option>
-                    <option>Sports</option>
-                    <option>Leather</option>
-                    <option>Fitness</option>
-                  </select>
+                  />
                 </div>
 
-                <div className="col-md-12">
-                  <label className="form-label">Description</label>
-                  <textarea
-                    className="form-control"
-                    rows="2"
-                    value={form.description}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
-                  ></textarea>
-                </div>
-
-                <div className="col-md-4">
-                  <label className="form-label">Size</label>
+                <div className="col-md-6">
                   <input
                     className="form-control"
+                    placeholder="Size"
                     value={form.size}
                     onChange={(e) =>
                       setForm({ ...form, size: e.target.value })
@@ -313,10 +335,10 @@ function BusinessProfile() {
                   />
                 </div>
 
-                <div className="col-md-4">
-                  <label className="form-label">Colors</label>
+                <div className="col-md-6">
                   <input
                     className="form-control"
+                    placeholder="Colors"
                     value={form.colors}
                     onChange={(e) =>
                       setForm({ ...form, colors: e.target.value })
@@ -324,10 +346,10 @@ function BusinessProfile() {
                   />
                 </div>
 
-                <div className="col-md-4">
-                  <label className="form-label">Price</label>
+                <div className="col-md-6">
                   <input
                     className="form-control"
+                    placeholder="Price"
                     value={form.price}
                     onChange={(e) =>
                       setForm({ ...form, price: e.target.value })
@@ -335,14 +357,25 @@ function BusinessProfile() {
                   />
                 </div>
 
-                <div className="col-md-4">
-                  <label className="form-label">
-                    Available Quantity
-                  </label>
+                <div className="col-md-6">
+                  <select
+                    className="form-select"
+                    value={form.method}
+                    onChange={(e) =>
+                      setForm({ ...form, method: e.target.value })
+                    }
+                  >
+                    <option value="">Select Method</option>
+                    <option>Hand Made</option>
+                    <option>Machine Made</option>
+                  </select>
+                </div>
+
+                <div className="col-md-6">
                   <input
                     type="number"
-                    min="0"
                     className="form-control"
+                    placeholder="Available Quantity"
                     value={form.availableQuantity}
                     onChange={(e) =>
                       setForm({
@@ -353,46 +386,25 @@ function BusinessProfile() {
                   />
                 </div>
 
-                <div className="col-md-6">
-                  <label className="form-label">
-                    Manufacturing Method
-                  </label>
-                  <select
-                    className="form-select"
-                    value={form.method}
+                <div className="col-12">
+                  <textarea
+                    className="form-control"
+                    placeholder="Description"
+                    value={form.description}
                     onChange={(e) =>
-                      setForm({ ...form, method: e.target.value })
+                      setForm({ ...form, description: e.target.value })
                     }
-                  >
-                    <option value="">Select</option>
-                    <option>Hand-stitched</option>
-                    <option>Machine-made</option>
-                  </select>
+                  />
                 </div>
 
-                <div className="col-md-6">
-                  <label className="form-label">Product Images</label>
-                  <div className="upload-box text-center border rounded p-3">
-                    <img
-                      src={productImage}
-                      alt="preview"
-                      style={{ width: "80px", marginBottom: "10px" }}
-                    />
-                    <small className="d-block">
-                      Upload coming soon
-                    </small>
-                  </div>
-                </div>
               </div>
             </div>
 
             <div className="modal-footer">
-              <button
-                className="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
+              <button className="btn btn-secondary" data-bs-dismiss="modal">
                 Cancel
               </button>
+
               <button
                 className="btn btn-primary"
                 data-bs-dismiss="modal"
@@ -401,6 +413,7 @@ function BusinessProfile() {
                 Save Product
               </button>
             </div>
+
           </div>
         </div>
       </div>
