@@ -30,8 +30,8 @@ import BusinessProfile from './userPanel/BusinessProfile';
 import FAQs from './userPanel/FAQs';
 import PublicBusinessProfile from './userPanel/PublicBusinessProfile';
 import SendInquiry from './userPanel/sendInquiry';
-
 import ProtectedRoute from "./ProtectedRoute";
+import PicTest from './userPanel/PicTest';
 
 
 function App() {
@@ -60,6 +60,7 @@ function App() {
         <Route path="/FAQs" element={<FAQs />} />
         <Route path="/publicBusinessProfile" element={<PublicBusinessProfile />} />
         <Route path="/sendInquiry" element={<SendInquiry />} />
+        <Route path="/picTest" element={<PicTest />} />
 
         {/* ================= ADMIN ROUTES ================= */}
         <Route path="/admin-login" element={<AdminSignin />} />

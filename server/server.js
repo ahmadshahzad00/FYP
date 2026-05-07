@@ -1,26 +1,27 @@
 import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
+import cors from "cors";
 import connectDB from "./config/db.js";
 import authAdmin from "./routes/authAdmin.js";
 import authUser from "./routes/authUser.js";
 import registerBusinessRoute from "./routes/registerBusiness.js";
-import path from "path";
+import fileCheckRoutes from "./routes/fileCheck.js";
 
 dotenv.config();
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static("uploads"));
 
-//  ROUTES
+// ROUTE 
 app.use("/api/admin", authAdmin);
-app.use("/api/auth", authUser); 
+app.use("/api/auth", authUser);
 app.use("/api/business", registerBusinessRoute);
+app.use("/api/file", fileCheckRoutes);
 
 connectDB();
 

@@ -25,10 +25,8 @@ function UserHeader() {
         },
       });
 
-      // ✅ If API success → business exists
       setHasBusiness(true);
     } catch (err) {
-      // ❌ 404 → no business
       setHasBusiness(false);
     }
   };
