@@ -11,7 +11,6 @@ const router = express.Router();
 /* ===== Multer ===== */
 const upload = multer({ storage: multer.memoryStorage() });
 
-/* ===== ROUTE ===== */
 router.post("/check-image", upload.single("image"), async (req, res) => {
   try {
     const file = req.file;

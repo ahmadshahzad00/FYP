@@ -13,9 +13,8 @@ function PicTest() {
     if (!file) return;
 
     setImage(file);
-    setResult(null); // reset old result
+    setResult(null);
 
-    // cleanup old preview URL (important)
     if (preview) URL.revokeObjectURL(preview);
 
     setPreview(URL.createObjectURL(file));
