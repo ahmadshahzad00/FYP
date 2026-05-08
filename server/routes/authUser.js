@@ -25,11 +25,15 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: "iamahmadshahzad228576@gmail.com",
-    pass: "rpkzvrawsgefuhrl",
+    pass: "tsbjfmucxxyalsnh",
   },
 });
 
+/* ================= OTP STORE ================= */
 const otpStore = {};
+
+/* ================= RESET PASSWORD STORE ================= */
+const resetStore = {};
 
 /* ================= SEND OTP ================= */
 router.post("/send-otp", async (req, res) => {
@@ -144,7 +148,6 @@ router.put("/edit-profile", async (req, res) => {
 
     const { name, phone, address, email } = req.body;
 
-    // check email already exists
     const existing = await User.findOne({
       email,
       _id: { $ne: decoded.id },
@@ -188,6 +191,82 @@ router.post("/upload-profile", upload.single("image"), async (req, res) => {
       message: "Image uploaded successfully",
       image: user.image,
     });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* =========================================================
+   🔥 NEW: FORGOT PASSWORD ROUTE
+========================================================= */
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ message: "Email not found" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET || "secretkey",
+      { expiresIn: "10m" }
+    );
+
+    resetStore[token] = user._id;
+
+    const resetLink = `http://localhost:3000/reset-password/${token}`;
+
+    await transporter.sendMail({
+      to: email,
+      subject: "Password Reset Request",
+      html: `
+        <h2>Reset Your Password</h2>
+        <p>Click below link (valid for 10 minutes):</p>
+        <a href="${resetLink}">${resetLink}</a>
+      `,
+    });
+
+    res.json({ message: "Password reset link sent to your Email" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* =========================================================
+   🔥 NEW: RESET PASSWORD ROUTE
+========================================================= */
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    let decoded;
+
+    try {
+      decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || "secretkey"
+      );
+    } catch (err) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    delete resetStore[token];
+
+    res.json({ message: "Password updated successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

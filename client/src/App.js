@@ -32,6 +32,8 @@ import PublicBusinessProfile from './userPanel/PublicBusinessProfile';
 import SendInquiry from './userPanel/sendInquiry';
 import ProtectedRoute from "./ProtectedRoute";
 import PicTest from './userPanel/PicTest';
+import NewPassword from './userPanel/NewPassword';
+import ForgetPassword from './userPanel/ForgetPassword';
 
 
 function App() {
@@ -61,6 +63,8 @@ function App() {
         <Route path="/publicBusinessProfile" element={<PublicBusinessProfile />} />
         <Route path="/sendInquiry" element={<SendInquiry />} />
         <Route path="/picTest" element={<PicTest />} />
+        <Route path="/forgot-password" element={<ForgetPassword />} />
+        <Route path="/reset-password/:token" element={<NewPassword />} />
 
         {/* ================= ADMIN ROUTES ================= */}
         <Route path="/admin-login" element={<AdminSignin />} />
