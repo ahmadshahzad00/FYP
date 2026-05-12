@@ -1,87 +1,102 @@
 import express from "express";
 import multer from "multer";
 import axios from "axios";
+import FormData from "form-data";
 import exifParser from "exif-parser";
 import dotenv from "dotenv";
+import fs from "fs";
 
 dotenv.config();
 
 const router = express.Router();
 
-/* ===== Multer ===== */
-const upload = multer({ storage: multer.memoryStorage() });
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/ai/");
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = Date.now() + "-" + file.originalname;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ storage });
 
 router.post("/check-image", upload.single("image"), async (req, res) => {
   try {
     const file = req.file;
 
     if (!file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded",
+      });
     }
 
-    /* ================= EXIF ================= */
     let exifData;
+
     try {
-      const parser = exifParser.create(file.buffer);
-      exifData = parser.parse();
+      const buffer = fs.readFileSync(file.path);
+      const parsed = exifParser.create(buffer).parse();
+
+      exifData =
+        parsed?.tags && Object.keys(parsed.tags).length > 0
+          ? parsed.tags
+          : "No EXIF metadata found";
     } catch (err) {
       exifData = "No EXIF metadata found";
     }
 
-    /* ================= DEBUG KEY (ADD HERE) ================= */
-    console.log("🔥 HIVE KEY LOADED:", process.env.HIVE_API_KEY);
-
-    /* ================= HIVE AI CHECK ================= */
     let aiResult;
 
     try {
-      const base64Image =
-            "data:image/jpeg;base64," + file.buffer.toString("base64");
+      const formData = new FormData();
 
-            const response = await axios.post(
-                "https://api.thehive.ai/api/v3/task/sync",
-                {
-                    inputs: [
-                    {
-                        type: "image",
-                        value: "https://your-image-url.com/image.jpg"
-                    }
-                    ],
-                    models: ["sfw_image_classification"]
-                },
-                {
-                    headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${process.env.HIVE_API_KEY}`
-                    }
-                }
-            );
+      formData.append("media", fs.createReadStream(file.path));
+
+      formData.append("models", "genai,deepfake,face-attributes");
+
+      formData.append("api_user", process.env.SIGHTENGINE_USER);
+      formData.append("api_secret", process.env.SIGHTENGINE_SECRET);
+
+      const response = await axios.post(
+        "https://api.sightengine.com/1.0/check.json",
+        formData,
+        {
+          headers: formData.getHeaders(),
+        }
+      );
 
       aiResult = response.data;
 
     } catch (err) {
-      console.log("HIVE ERROR STATUS:", err.response?.status);
-      console.log("HIVE ERROR DATA:", err.response?.data);
-      console.log("HIVE ERROR MESSAGE:", err.message);
+      console.log("========== SIGHTENGINE ERROR ==========");
+      console.log(err.response?.data || err.message);
+      console.log("======================================");
 
       aiResult = {
         success: false,
-        status: err.response?.status,
         error: err.response?.data || err.message,
       };
     }
 
-    /* ================= RESPONSE ================= */
-    res.json({
+    /* ================= FINAL RESPONSE ================= */
+    return res.json({
       success: true,
       fileName: file.originalname,
+      filePath: file.path,
       exif: exifData,
       aiCheck: aiResult,
     });
 
   } catch (error) {
     console.error("SERVER ERROR:", error);
-    res.status(500).json({ message: "Server error" });
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 });
 

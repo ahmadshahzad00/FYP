@@ -89,7 +89,7 @@ function PicTest() {
           <p><b>EXIF:</b></p>
           <pre>{JSON.stringify(result.exif, null, 2)}</pre>
 
-          <p><b>AI Detection (Hive):</b></p>
+          <p><b>AI Detection (Sightengine):</b></p>
           <pre>{JSON.stringify(result.aiCheck, null, 2)}</pre>
         </div>
       )}
