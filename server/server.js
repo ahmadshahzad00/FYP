@@ -17,6 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static("uploads"));
 
+
 // ROUTE 
 app.use("/api/admin", authAdmin);
 app.use("/api/auth", authUser);

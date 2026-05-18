@@ -12,7 +12,7 @@ const router = express.Router();
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/ai/");
+    cb(null, "uploads/ai/") ;
   },
   filename: function (req, file, cb) {
     const uniqueName = Date.now() + "-" + file.originalname;
@@ -70,9 +70,7 @@ router.post("/check-image", upload.single("image"), async (req, res) => {
       aiResult = response.data;
 
     } catch (err) {
-      console.log("========== SIGHTENGINE ERROR ==========");
       console.log(err.response?.data || err.message);
-      console.log("======================================");
 
       aiResult = {
         success: false,
@@ -99,5 +97,4 @@ router.post("/check-image", upload.single("image"), async (req, res) => {
     });
   }
 });
-
 export default router;
