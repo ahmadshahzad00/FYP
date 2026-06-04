@@ -6,6 +6,7 @@ import authAdmin from "./routes/authAdmin.js";
 import authUser from "./routes/authUser.js";
 import registerBusinessRoute from "./routes/registerBusiness.js";
 import fileCheckRoutes from "./routes/fileCheck.js";
+import uploadProduct from "./routes/uploadProduct.js";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use("/api/admin", authAdmin);
 app.use("/api/auth", authUser);
 app.use("/api/business", registerBusinessRoute);
 app.use("/api/file", fileCheckRoutes);
+app.use("/api/product", uploadProduct);
 
 connectDB();
 

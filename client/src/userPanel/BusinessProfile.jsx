@@ -10,6 +10,7 @@ function BusinessProfile() {
   const [products, setProducts] = useState([]);
 
   const [form, setForm] = useState({
+    image: null,
     name: "",
     category: "",
     description: "",
@@ -44,6 +45,7 @@ function BusinessProfile() {
 
   const openAddModal = () => {
     setForm({
+      image: null,
       name: "",
       category: "",
       description: "",
@@ -53,6 +55,7 @@ function BusinessProfile() {
       method: "",
       availableQuantity: "",
     });
+
     setEditId(null);
   };
 
@@ -61,22 +64,60 @@ function BusinessProfile() {
     setEditId(product.id);
   };
 
-  const handleSave = () => {
-    if (!form.name || !form.category) return;
+  const handleSave = async () => {
+    try {
+      if (!form.image) {
+        alert("Please select a product image");
+        return;
+      }
 
-    const newProduct = {
-      ...form,
-      image: productImage,
-    };
+      const data = new FormData();
 
-    if (editId) {
-      setProducts(
-        products.map((p) =>
-          p.id === editId ? { ...newProduct, id: editId } : p
-        )
+      data.append("businessId", businessInfo._id);
+      data.append("name", form.name);
+      data.append("category", form.category);
+      data.append("description", form.description);
+      data.append("size", form.size);
+      data.append("colors", form.colors);
+      data.append("price", form.price);
+      data.append("method", form.method);
+      data.append("availableQuantity", form.availableQuantity);
+      data.append("image", form.image);
+
+      const res = await axios.post(
+        "http://localhost:5000/api/product/upload-product",
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
-    } else {
-      setProducts([...products, { ...newProduct, id: Date.now() }]);
+
+      alert(res.data.message);
+
+      setProducts([
+        ...products,
+        {
+          id: res.data.product._id,
+          image: `http://localhost:5000/${res.data.product.image}`,
+          name: res.data.product.name,
+          category: res.data.product.category,
+          description: res.data.product.description,
+          size: res.data.product.size,
+          colors: res.data.product.colors,
+          price: res.data.product.price,
+          method: res.data.product.method,
+          availableQuantity: res.data.product.availableQuantity,
+        },
+      ]);
+
+    } catch (err) {
+      alert(
+        err.response?.data?.message ||
+        "Image rejected or upload failed"
+      );
     }
   };
 
@@ -399,6 +440,39 @@ function BusinessProfile() {
 
               </div>
             </div>
+
+            <div className="col-12">
+              <label className="form-label fw-semibold">
+                Product Image
+              </label>
+
+              <input
+                type="file"
+                className="form-control"
+                accept="image/*"
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    image: e.target.files[0],
+                  })
+                }
+              />
+            </div>
+
+            {form.image && (
+              <div className="mt-2">
+                <img
+                  src={URL.createObjectURL(form.image)}
+                  alt="Preview"
+                  style={{
+                    width: "120px",
+                    height: "120px",
+                    objectFit: "cover",
+                    borderRadius: "8px",
+                  }}
+                />
+              </div>
+            )}
 
             <div className="modal-footer">
               <button className="btn btn-secondary" data-bs-dismiss="modal">
