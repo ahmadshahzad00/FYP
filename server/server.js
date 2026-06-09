@@ -22,6 +22,7 @@ app.use("/uploads", express.static("uploads"));
 // ROUTE 
 app.use("/api/admin", authAdmin);
 app.use("/api/auth", authUser);
+app.use("/api/auth/admin", authAdmin);  // ADD THIS LINE - Mount admin routes also under /api/auth/admin
 app.use("/api/business", registerBusinessRoute);
 app.use("/api/file", fileCheckRoutes);
 app.use("/api/product", uploadProduct);

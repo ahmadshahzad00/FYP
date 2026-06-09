@@ -2,13 +2,11 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
-import productImage from "../assets/image.png";
 
 function BusinessProfile() {
   const [businessInfo, setBusinessInfo] = useState(null);
-
   const [products, setProducts] = useState([]);
-
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     image: null,
     name: "",
@@ -22,6 +20,7 @@ function BusinessProfile() {
   });
 
   const [editId, setEditId] = useState(null);
+  const [editImageChanged, setEditImageChanged] = useState(false);
 
   useEffect(() => {
     fetchBusiness();
@@ -38,8 +37,36 @@ function BusinessProfile() {
         }
       );
       setBusinessInfo(res.data);
+      // After getting business info, fetch its products
+      await fetchProducts(res.data._id);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProducts = async (businessId) => {
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/product/products/${businessId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      // Format products with full image URL
+      const formattedProducts = res.data.products.map(product => ({
+        ...product,
+        id: product._id,
+        image: product.image ? `http://localhost:5000/${product.image}` : null,
+      }));
+      
+      setProducts(formattedProducts);
+    } catch (err) {
+      console.error("Error fetching products:", err);
     }
   };
 
@@ -55,24 +82,36 @@ function BusinessProfile() {
       method: "",
       availableQuantity: "",
     });
-
     setEditId(null);
+    setEditImageChanged(false);
   };
 
   const openEditModal = (product) => {
-    setForm(product);
-    setEditId(product.id);
+    setForm({
+      id: product._id,
+      image: null,
+      name: product.name,
+      category: product.category,
+      description: product.description,
+      size: product.size,
+      colors: product.colors,
+      price: product.price,
+      method: product.method,
+      availableQuantity: product.availableQuantity,
+    });
+    setEditId(product._id);
+    setEditImageChanged(false);
   };
 
   const handleSave = async () => {
     try {
-      if (!form.image) {
+      // For edit mode, image is optional
+      if (!editId && !form.image) {
         alert("Please select a product image");
         return;
       }
 
       const data = new FormData();
-
       data.append("businessId", businessInfo._id);
       data.append("name", form.name);
       data.append("category", form.category);
@@ -82,57 +121,113 @@ function BusinessProfile() {
       data.append("price", form.price);
       data.append("method", form.method);
       data.append("availableQuantity", form.availableQuantity);
-      data.append("image", form.image);
+      
+      // Only append image if it's a new file or in add mode
+      if (form.image && (editImageChanged || !editId)) {
+        data.append("image", form.image);
+      }
 
-      const res = await axios.post(
-        "http://localhost:5000/api/product/upload-product",
-        data,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      alert(res.data.message);
-
-      setProducts([
-        ...products,
-        {
+      let res;
+      
+      if (editId) {
+        // Update existing product
+        res = await axios.put(
+          `http://localhost:5000/api/product/update-product/${editId}`,
+          data,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        
+        alert(res.data.message);
+        
+        // Refresh products list
+        await fetchProducts(businessInfo._id);
+        
+      } else {
+        // Create new product
+        res = await axios.post(
+          "http://localhost:5000/api/product/upload-product",
+          data,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        
+        alert(res.data.message);
+        
+        // Add new product to state
+        const newProduct = {
+          ...res.data.product,
           id: res.data.product._id,
           image: `http://localhost:5000/${res.data.product.image}`,
-          name: res.data.product.name,
-          category: res.data.product.category,
-          description: res.data.product.description,
-          size: res.data.product.size,
-          colors: res.data.product.colors,
-          price: res.data.product.price,
-          method: res.data.product.method,
-          availableQuantity: res.data.product.availableQuantity,
-        },
-      ]);
-
+        };
+        setProducts([...products, newProduct]);
+      }
+      
+      // Close modal
+      const modal = document.getElementById("productModal");
+      const bootstrapModal = window.bootstrap?.Modal?.getInstance(modal);
+      if (bootstrapModal) {
+        bootstrapModal.hide();
+      } else {
+        // Fallback: click close button
+        const closeBtn = modal.querySelector(".btn-close");
+        if (closeBtn) closeBtn.click();
+      }
+      
     } catch (err) {
       alert(
         err.response?.data?.message ||
-        "Image rejected or upload failed"
+        "Failed to save product"
       );
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Delete this product?")) {
-      setProducts(products.filter((p) => p.id !== id));
+      try {
+        await axios.delete(
+          `http://localhost:5000/api/product/delete-product/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        
+        setProducts(products.filter((p) => p.id !== id));
+        alert("Product deleted successfully");
+      } catch (err) {
+        alert(err.response?.data?.message || "Failed to delete product");
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <>
+        <UserHeader />
+        <div className="container text-center py-5">
+          <h4>Loading Business Profile...</h4>
+        </div>
+        <UserFooter />
+      </>
+    );
+  }
 
   if (!businessInfo) {
     return (
       <>
         <UserHeader />
         <div className="container text-center py-5">
-          <h4>Loading Business Profile...</h4>
+          <h4>Business not found</h4>
         </div>
         <UserFooter />
       </>
@@ -193,8 +288,8 @@ function BusinessProfile() {
           {/* PRODUCTS */}
           <div className="col-lg-8">
             <div className="card shadow-sm border-0">
-              <div className="card-header bg-white d-flex justify-content-between">
-                <h5 className="fw-bold mb-0">Products</h5>
+              <div className="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 className="fw-bold mb-0">Products ({products.length})</h5>
 
                 <button
                   className="btn btn-primary btn-sm"
@@ -206,80 +301,105 @@ function BusinessProfile() {
                 </button>
               </div>
 
-              <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Image</th>
-                      <th>Name</th>
-                      <th>Category</th>
-                      <th>Size</th>
-                      <th>Colors</th>
-                      <th>Price</th>
-                      <th>Method</th>
-                      <th>Qty</th>
-                      <th className="text-end">Action</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {products.map((p) => (
-                      <tr key={p.id}>
-                        <td>
-                          <img
-                            src={p.image}
-                            alt={p.name}
-                            style={{
-                              width: "50px",
-                              height: "50px",
-                              objectFit: "cover",
-                              borderRadius: "6px",
-                            }}
-                          />
-                        </td>
-
-                        <td className="fw-semibold">{p.name}</td>
-
-                        <td>
-                          <span className="badge bg-secondary">
-                            {p.category}
-                          </span>
-                        </td>
-
-                        <td>{p.size}</td>
-                        <td>{p.colors}</td>
-                        <td className="fw-bold text-success">{p.price}</td>
-
-                        <td>
-                          <span className="badge bg-info text-dark">
-                            {p.method}
-                          </span>
-                        </td>
-
-                        <td>{p.availableQuantity}</td>
-
-                        <td className="text-end">
-                          <button
-                            className="btn btn-outline-secondary btn-sm me-2"
-                            data-bs-toggle="modal"
-                            data-bs-target="#productModal"
-                            onClick={() => openEditModal(p)}
-                          >
-                            <i className="bi bi-pencil"></i>
-                          </button>
-
-                          <button
-                            className="btn btn-outline-danger btn-sm"
-                            onClick={() => handleDelete(p.id)}
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        </td>
+              {products.length === 0 ? (
+                <div className="text-center py-5">
+                  <i className="bi bi-box fs-1 text-muted"></i>
+                  <p className="text-muted mt-2">No products added yet</p>
+                  <button
+                    className="btn btn-outline-primary btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#productModal"
+                    onClick={openAddModal}
+                  >
+                    Add Your First Product
+                  </button>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle mb-0">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Image</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Size</th>
+                        <th>Colors</th>
+                        <th>Price</th>
+                        <th>Method</th>
+                        <th>Qty</th>
+                        <th className="text-end">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+
+                    <tbody>
+                      {products.map((p) => (
+                        <tr key={p.id}>
+                          <td>
+                            {p.image ? (
+                              <img
+                                src={p.image}
+                                alt={p.name}
+                                style={{
+                                  width: "50px",
+                                  height: "50px",
+                                  objectFit: "cover",
+                                  borderRadius: "6px",
+                                }}
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                  e.target.parentElement.innerHTML = '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:6px;display:flex;align-items:center;justify-content:center"><i class="bi bi-image"></i></div>';
+                                }}
+                              />
+                            ) : (
+                              <div style={{width:"50px",height:"50px",background:"#f0f0f0",borderRadius:"6px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                <i className="bi bi-image"></i>
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="fw-semibold">{p.name}</td>
+
+                          <td>
+                            <span className="badge bg-secondary">
+                              {p.category}
+                            </span>
+                          </td>
+
+                          <td>{p.size || "-"}</td>
+                          <td>{p.colors || "-"}</td>
+                          <td className="fw-bold text-success">Rs. {p.price}</td>
+
+                          <td>
+                            <span className="badge bg-info text-dark">
+                              {p.method}
+                            </span>
+                          </td>
+
+                          <td>{p.availableQuantity}</td>
+
+                          <td className="text-end">
+                            <button
+                              className="btn btn-outline-secondary btn-sm me-2"
+                              data-bs-toggle="modal"
+                              data-bs-target="#productModal"
+                              onClick={() => openEditModal(p)}
+                            >
+                              <i className="bi bi-pencil"></i>
+                            </button>
+
+                            <button
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => handleDelete(p.id)}
+                            >
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
 
@@ -297,31 +417,41 @@ function BusinessProfile() {
 
                 {/* SOCIAL ICONS */}
                 <div className="d-flex gap-3 mt-3">
-                  <a href={businessInfo.facebook} target="_blank">
-                    <i className="bi bi-facebook fs-5 text-primary"></i>
-                  </a>
+                  {businessInfo.facebook && (
+                    <a href={businessInfo.facebook} target="_blank" rel="noopener noreferrer">
+                      <i className="bi bi-facebook fs-5 text-primary"></i>
+                    </a>
+                  )}
 
-                  <a href={businessInfo.instagram} target="_blank">
-                    <i className="bi bi-instagram fs-5 text-danger"></i>
-                  </a>
+                  {businessInfo.instagram && (
+                    <a href={businessInfo.instagram} target="_blank" rel="noopener noreferrer">
+                      <i className="bi bi-instagram fs-5 text-danger"></i>
+                    </a>
+                  )}
 
-                  <a href={businessInfo.tiktok} target="_blank">
-                    <i className="bi bi-tiktok fs-5 text-dark"></i>
-                  </a>
+                  {businessInfo.tiktok && (
+                    <a href={businessInfo.tiktok} target="_blank" rel="noopener noreferrer">
+                      <i className="bi bi-tiktok fs-5 text-dark"></i>
+                    </a>
+                  )}
 
-                  <a href={`https://wa.me/${businessInfo.whatsapp}`}>
-                    <i className="bi bi-whatsapp fs-5 text-success"></i>
-                  </a>
+                  {businessInfo.whatsapp && (
+                    <a href={`https://wa.me/${businessInfo.whatsapp}`} target="_blank" rel="noopener noreferrer">
+                      <i className="bi bi-whatsapp fs-5 text-success"></i>
+                    </a>
+                  )}
 
-                  <a href={businessInfo.website} target="_blank">
-                    <i className="bi bi-globe fs-5 text-dark"></i>
-                  </a>
+                  {businessInfo.website && (
+                    <a href={businessInfo.website} target="_blank" rel="noopener noreferrer">
+                      <i className="bi bi-globe fs-5 text-dark"></i>
+                    </a>
+                  )}
                 </div>
 
                 <hr />
 
                 <p><strong>Category:</strong> {businessInfo.category}</p>
-                <p><strong>NTN:</strong> {businessInfo.ntnNumber}</p>
+                {businessInfo.ntnNumber && <p><strong>NTN:</strong> {businessInfo.ntnNumber}</p>}
               </div>
             </div>
           </div>
@@ -332,17 +462,15 @@ function BusinessProfile() {
       <div className="modal fade" id="productModal">
         <div className="modal-dialog modal-lg modal-dialog-centered">
           <div className="modal-content">
-
             <div className="modal-header">
               <h5 className="modal-title">
                 {editId ? "Edit Product" : "Add Product"}
               </h5>
-              <button className="btn-close" data-bs-dismiss="modal"></button>
+              <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <div className="modal-body">
               <div className="row g-3">
-
                 <div className="col-md-6">
                   <input
                     className="form-control"
@@ -379,7 +507,7 @@ function BusinessProfile() {
                 <div className="col-md-6">
                   <input
                     className="form-control"
-                    placeholder="Colors"
+                    placeholder="Colors (comma separated)"
                     value={form.colors}
                     onChange={(e) =>
                       setForm({ ...form, colors: e.target.value })
@@ -389,6 +517,7 @@ function BusinessProfile() {
 
                 <div className="col-md-6">
                   <input
+                    type="number"
                     className="form-control"
                     placeholder="Price"
                     value={form.price}
@@ -429,6 +558,7 @@ function BusinessProfile() {
 
                 <div className="col-12">
                   <textarea
+                    rows="3"
                     className="form-control"
                     placeholder="Description"
                     value={form.description}
@@ -438,56 +568,53 @@ function BusinessProfile() {
                   />
                 </div>
 
+                <div className="col-12">
+                  <label className="form-label fw-semibold">
+                    Product Image {editId && "(Leave empty to keep current)"}
+                  </label>
+                  <input
+                    type="file"
+                    className="form-control"
+                    accept="image/*"
+                    onChange={(e) => {
+                      setForm({ ...form, image: e.target.files[0] });
+                      setEditImageChanged(true);
+                    }}
+                  />
+                </div>
+
+                {(form.image && typeof form.image !== "string") && (
+                  <div className="col-12">
+                    <div className="mt-2">
+                      <img
+                        src={URL.createObjectURL(form.image)}
+                        alt="Preview"
+                        style={{
+                          width: "120px",
+                          height: "120px",
+                          objectFit: "cover",
+                          borderRadius: "8px",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-
-            <div className="col-12">
-              <label className="form-label fw-semibold">
-                Product Image
-              </label>
-
-              <input
-                type="file"
-                className="form-control"
-                accept="image/*"
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    image: e.target.files[0],
-                  })
-                }
-              />
-            </div>
-
-            {form.image && (
-              <div className="mt-2">
-                <img
-                  src={URL.createObjectURL(form.image)}
-                  alt="Preview"
-                  style={{
-                    width: "120px",
-                    height: "120px",
-                    objectFit: "cover",
-                    borderRadius: "8px",
-                  }}
-                />
-              </div>
-            )}
 
             <div className="modal-footer">
-              <button className="btn btn-secondary" data-bs-dismiss="modal">
+              <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
                 Cancel
               </button>
 
               <button
+                type="button"
                 className="btn btn-primary"
-                data-bs-dismiss="modal"
                 onClick={handleSave}
               >
                 Save Product
               </button>
             </div>
-
           </div>
         </div>
       </div>

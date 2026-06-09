@@ -38,6 +38,27 @@ const adminUserSchema = new mongoose.Schema(
         "contact_messages_handler"
       ],
       default: "business_handler"
+    },
+
+    // Add these fields for better functionality
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+
+    lastLogin: {
+      type: Date,
+      default: null
+    },
+
+    resetToken: {
+      type: String,
+      default: null
+    },
+
+    resetTokenExpiry: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }
