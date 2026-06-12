@@ -30,6 +30,15 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Test route
+router.get("/test", (req, res) => {
+  res.json({ 
+    success: true, 
+    message: "API is working!",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // GET products by business ID
 router.get("/products/:businessId", async (req, res) => {
   try {
@@ -381,6 +390,64 @@ router.delete("/delete-product/:id", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+});
+
+// GET all products with business details
+router.get("/products-with-business", async (req, res) => {
+  try {
+    // Fetch all products
+    const products = await Product.find({})
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!products || products.length === 0) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        products: [],
+        message: "No products found"
+      });
+    }
+
+    // Get unique business IDs from products
+    const businessIds = [...new Set(products.map(p => p.businessId).filter(Boolean))];
+    
+    // Fetch all businesses with their details
+    const businesses = await Business.find(
+      { _id: { $in: businessIds } },
+      { _id: 1, companyName: 1, ownerName: 1 }
+    ).lean();
+
+    // Create a map for quick business lookup
+    const businessMap = new Map();
+    businesses.forEach(business => {
+      businessMap.set(business._id.toString(), {
+        businessName: business.companyName,
+        ownerName: business.ownerName
+      });
+    });
+
+    // Attach business details to each product
+    const productsWithBusiness = products.map(product => ({
+      ...product,
+      businessDetails: businessMap.get(product.businessId?.toString()) || {
+        businessName: 'Unknown Business',
+        ownerName: 'Unknown Owner'
+      }
+    }));
+
+    return res.status(200).json({
+      success: true,
+      count: productsWithBusiness.length,
+      products: productsWithBusiness
+    });
+  } catch (error) {
+    console.error("Error in /products-with-business:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 });

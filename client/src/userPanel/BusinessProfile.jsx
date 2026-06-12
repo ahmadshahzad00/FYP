@@ -6,7 +6,10 @@ import UserFooter from "./UserFooter";
 function BusinessProfile() {
   const [businessInfo, setBusinessInfo] = useState(null);
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchField, setSearchField] = useState("name");
   const [form, setForm] = useState({
     image: null,
     name: "",
@@ -25,6 +28,10 @@ function BusinessProfile() {
   useEffect(() => {
     fetchBusiness();
   }, []);
+
+  useEffect(() => {
+    filterProducts();
+  }, [searchTerm, searchField, products]);
 
   const fetchBusiness = async () => {
     try {
@@ -65,9 +72,52 @@ function BusinessProfile() {
       }));
       
       setProducts(formattedProducts);
+      setFilteredProducts(formattedProducts);
     } catch (err) {
       console.error("Error fetching products:", err);
     }
+  };
+
+  const filterProducts = () => {
+    if (!searchTerm.trim()) {
+      setFilteredProducts(products);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    
+    const filtered = products.filter(product => {
+      switch(searchField) {
+        case "name":
+          return product.name?.toLowerCase().includes(searchLower);
+        case "category":
+          return product.category?.toLowerCase().includes(searchLower);
+        case "price":
+          return product.price?.toString().toLowerCase().includes(searchLower);
+        case "method":
+          return product.method?.toLowerCase().includes(searchLower);
+        case "size":
+          return product.size?.toLowerCase().includes(searchLower);
+        default:
+          return product.name?.toLowerCase().includes(searchLower);
+      }
+    });
+    
+    setFilteredProducts(filtered);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchFieldChange = (e) => {
+    setSearchField(e.target.value);
+    setSearchTerm("");
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+    setFilteredProducts(products);
   };
 
   const openAddModal = () => {
@@ -169,6 +219,7 @@ function BusinessProfile() {
           image: `http://localhost:5000/${res.data.product.image}`,
         };
         setProducts([...products, newProduct]);
+        setFilteredProducts([...filteredProducts, newProduct]);
       }
       
       // Close modal
@@ -202,7 +253,9 @@ function BusinessProfile() {
           }
         );
         
-        setProducts(products.filter((p) => p.id !== id));
+        const updatedProducts = products.filter((p) => p.id !== id);
+        setProducts(updatedProducts);
+        setFilteredProducts(updatedProducts);
         alert("Product deleted successfully");
       } catch (err) {
         alert(err.response?.data?.message || "Failed to delete product");
@@ -215,7 +268,10 @@ function BusinessProfile() {
       <>
         <UserHeader />
         <div className="container text-center py-5">
-          <h4>Loading Business Profile...</h4>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <h4 className="mt-3">Loading Business Profile...</h4>
         </div>
         <UserFooter />
       </>
@@ -288,31 +344,123 @@ function BusinessProfile() {
           {/* PRODUCTS */}
           <div className="col-lg-8">
             <div className="card shadow-sm border-0">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 className="fw-bold mb-0">Products ({products.length})</h5>
+              <div className="card-header bg-white d-flex justify-content-between align-items-center flex-wrap">
+                <h5 className="fw-bold mb-2 mb-md-0">
+                  Products ({filteredProducts.length})
+                </h5>
 
-                <button
-                  className="btn btn-primary btn-sm"
-                  data-bs-toggle="modal"
-                  data-bs-target="#productModal"
-                  onClick={openAddModal}
-                >
-                  <i className="bi bi-plus-lg me-1"></i>Add Product
-                </button>
-              </div>
-
-              {products.length === 0 ? (
-                <div className="text-center py-5">
-                  <i className="bi bi-box fs-1 text-muted"></i>
-                  <p className="text-muted mt-2">No products added yet</p>
+                <div className="d-flex gap-2">
                   <button
-                    className="btn btn-outline-primary btn-sm"
+                    className="btn btn-primary btn-sm"
                     data-bs-toggle="modal"
                     data-bs-target="#productModal"
                     onClick={openAddModal}
                   >
-                    Add Your First Product
+                    <i className="bi bi-plus-lg me-1"></i>Add Product
                   </button>
+                </div>
+              </div>
+
+              {/* Search Bar */}
+              <div className="card-body border-bottom">
+                <div className="row g-2 align-items-end">
+                  <div className="col-md-4">
+                    <label className="form-label fw-bold mb-1 small">
+                      <i className="bi bi-search"></i> Search By
+                    </label>
+                    <select 
+                      className="form-select form-select-sm" 
+                      value={searchField} 
+                      onChange={handleSearchFieldChange}
+                    >
+                      <option value="name">Product Name</option>
+                      <option value="category">Category</option>
+                      <option value="price">Price</option>
+                      <option value="method">Method</option>
+                      <option value="size">Size</option>
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label fw-bold mb-1 small">
+                      <i className="bi bi-input-cursor"></i> Search Term
+                    </label>
+                    <div className="input-group input-group-sm">
+                      <span className="input-group-text bg-white">
+                        <i className="bi bi-search"></i>
+                      </span>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder={`Search by ${searchField}...`}
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                      />
+                      {searchTerm && (
+                        <button 
+                          className="btn btn-outline-secondary" 
+                          type="button"
+                          onClick={clearSearch}
+                        >
+                          <i className="bi bi-x-lg"></i>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-md-2">
+                    <button 
+                      className="btn btn-outline-primary btn-sm w-100" 
+                      onClick={() => fetchProducts(businessInfo._id)}
+                    >
+                      <i className="bi bi-arrow-repeat"></i> Refresh
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Search Results Info */}
+                {searchTerm && (
+                  <div className="mt-2 pt-1">
+                    <small className="text-info">
+                      <i className="bi bi-info-circle"></i> 
+                      Showing results for: <strong>"{searchTerm}"</strong> in <strong>{searchField}</strong>
+                      {filteredProducts.length !== products.length && (
+                        <span className="ms-2 text-muted">
+                          (Found {filteredProducts.length} of {products.length} products)
+                        </span>
+                      )}
+                    </small>
+                  </div>
+                )}
+              </div>
+
+              {filteredProducts.length === 0 ? (
+                <div className="text-center py-5">
+                  {searchTerm ? (
+                    <>
+                      <i className="bi bi-search fs-1 text-muted"></i>
+                      <p className="text-muted mt-2">
+                        No products found matching "<strong>{searchTerm}</strong>" in {searchField}
+                      </p>
+                      <button
+                        className="btn btn-outline-primary btn-sm"
+                        onClick={clearSearch}
+                      >
+                        Clear Search
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-box fs-1 text-muted"></i>
+                      <p className="text-muted mt-2">No products added yet</p>
+                      <button
+                        className="btn btn-outline-primary btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#productModal"
+                        onClick={openAddModal}
+                      >
+                        Add Your First Product
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="table-responsive">
@@ -332,7 +480,7 @@ function BusinessProfile() {
                     </thead>
 
                     <tbody>
-                      {products.map((p) => (
+                      {filteredProducts.map((p) => (
                         <tr key={p.id}>
                           <td>
                             {p.image ? (

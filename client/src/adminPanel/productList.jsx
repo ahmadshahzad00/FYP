@@ -1,76 +1,97 @@
 import React, { useState, useEffect } from 'react';
 import AdminSidebar from './AdminSidebar';
-import myImage from "../assets/product.jfif";
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:5000/api/product';
 
 function ProductList() {
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchField, setSearchField] = useState('name'); // 'name', 'business', 'category', 'owner'
 
   useEffect(() => {
-    const dummyProducts = [
-      {
-        id: 1,
-        name: 'Premium Cotton Fabric',
-        category: 'Textiles',
-        price: '$25.99',
-        status: 'Active',
-        image: myImage,
-        business: 'Sialkot Textile Mills',
-        supplier: 'Allied Textiles Pvt Ltd',
-        stock: 320,
-        sku: 'TX-1001',
-        createdAt: '2026-03-02',
-        description: 'High-quality 100% cotton fabric, suitable for apparel and home decor.'
-      },
-      {
-        id: 2,
-        name: 'Leather Handbags',
-        category: 'Fashion',
-        price: '$89.99',
-        status: 'Active',
-        image: myImage,
-        business: 'Export Solutions Ltd',
-        supplier: 'Global Leather Works',
-        stock: 184,
-        sku: 'FG-2245',
-        createdAt: '2026-02-18',
-        description: 'Handcrafted leather handbags, made with premium grade leather and brass fittings.'
-      },
-      {
-        id: 3,
-        name: 'Surgical Instruments',
-        category: 'Medical',
-        price: '$150.00',
-        status: 'Inactive',
-        image: myImage,
-        business: 'Global Imports Inc',
-        supplier: 'MediTech Parts',
-        stock: 0,
-        sku: 'MD-5560',
-        createdAt: '2026-01-30',
-        description: 'Precision stainless steel surgical instruments for hospital and clinic use.'
-      },
-      {
-        id: 4,
-        name: 'Sports Equipment',
-        category: 'Sports',
-        price: '$45.50',
-        status: 'Active',
-        image: myImage,
-        business: 'Sialkot Textile Mills',
-        supplier: 'Sporting Goods Co.',
-        stock: 520,
-        sku: 'SP-0789',
-        createdAt: '2026-03-10',
-        description: 'Durable sports equipment with high impact resistance and excellent grip.'
-      },
-    ];
-    setProducts(dummyProducts);
+    fetchProducts();
   }, []);
 
+  useEffect(() => {
+    filterProducts();
+  }, [searchTerm, searchField, products]);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.get(`${API_BASE_URL}/products-with-business`);
+      
+      if (response.data.success) {
+        setProducts(response.data.products);
+        setFilteredProducts(response.data.products);
+      } else {
+        setError(response.data.message || 'Failed to fetch products');
+      }
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      
+      if (err.code === 'ERR_NETWORK') {
+        setError('Cannot connect to server. Please check if backend is running on port 5000');
+      } else if (err.response?.status === 404) {
+        setError('API endpoint not found');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to fetch products');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterProducts = () => {
+    if (!searchTerm.trim()) {
+      setFilteredProducts(products);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    
+    const filtered = products.filter(product => {
+      switch(searchField) {
+        case 'name':
+          return product.name?.toLowerCase().includes(searchLower);
+        case 'business':
+          return product.businessDetails?.businessName?.toLowerCase().includes(searchLower);
+        case 'owner':
+          return product.businessDetails?.ownerName?.toLowerCase().includes(searchLower);
+        case 'category':
+          return product.category?.toLowerCase().includes(searchLower);
+        default:
+          return product.name?.toLowerCase().includes(searchLower);
+      }
+    });
+    
+    setFilteredProducts(filtered);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchFieldChange = (e) => {
+    setSearchField(e.target.value);
+    setSearchTerm(''); // Clear search term when changing field
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    setFilteredProducts(products);
+  };
+
   const handleView = (id) => {
-    const product = products.find((p) => p.id === id);
+    const product = filteredProducts.find((p) => p._id === id);
     if (product) {
       setSelectedProduct(product);
       setShowModal(true);
@@ -82,20 +103,145 @@ function ProductList() {
     setSelectedProduct(null);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      setProducts(products.filter(product => product.id !== id));
-      if (selectedProduct?.id === id) {
-        handleCloseModal();
+      try {
+        await axios.delete(`${API_BASE_URL}/delete-product/${id}`);
+        const updatedProducts = products.filter(product => product._id !== id);
+        setProducts(updatedProducts);
+        setFilteredProducts(updatedProducts);
+        if (selectedProduct?._id === id) {
+          handleCloseModal();
+        }
+        alert('Product deleted successfully');
+      } catch (err) {
+        console.error('Error deleting product:', err);
+        alert(err.response?.data?.message || 'Failed to delete product');
       }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="d-flex min-vh-100 bg-light">
+        <AdminSidebar />
+        <div className="flex-grow-1 p-4 d-flex justify-content-center align-items-center">
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="mt-2">Loading products from database...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="d-flex min-vh-100 bg-light">
+        <AdminSidebar />
+        <div className="flex-grow-1 p-4 d-flex justify-content-center align-items-center">
+          <div className="text-center">
+            <div className="alert alert-danger" role="alert">
+              <i className="bi bi-exclamation-triangle fs-1"></i>
+              <h4 className="mt-2">Error</h4>
+              <p>{error}</p>
+              <button 
+                className="btn btn-primary mt-2" 
+                onClick={fetchProducts}
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="d-flex min-vh-100 bg-light">
       <AdminSidebar />
       <div className="flex-grow-1 p-4">
-        <h2 className="text-center mb-4">Product List</h2>
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2 className="mb-0">Product List</h2>
+          <div className="text-muted">
+            Total: {filteredProducts.length} products
+          </div>
+        </div>
+
+        {/* Search Bar Section */}
+        <div className="card mb-4 shadow-sm">
+          <div className="card-body">
+            <div className="row g-3 align-items-end">
+              <div className="col-md-4">
+                <label className="form-label fw-bold mb-1">
+                  <i className="bi bi-search"></i> Search By
+                </label>
+                <select 
+                  className="form-select" 
+                  value={searchField} 
+                  onChange={handleSearchFieldChange}
+                >
+                  <option value="name">Product Name</option>
+                  <option value="business">Business Name</option>
+                  <option value="owner">Owner Name</option>
+                  <option value="category">Category</option>
+                </select>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-bold mb-1">
+                  <i className="bi bi-input-cursor"></i> Search Term
+                </label>
+                <div className="input-group">
+                  <span className="input-group-text bg-white">
+                    <i className="bi bi-search"></i>
+                  </span>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder={`Search by ${searchField}...`}
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                  />
+                  {searchTerm && (
+                    <button 
+                      className="btn btn-outline-secondary" 
+                      type="button"
+                      onClick={clearSearch}
+                    >
+                      <i className="bi bi-x-lg"></i> Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+              {/* <div className="col-md-2">
+                <button 
+                  className="btn btn-primary w-100" 
+                  onClick={fetchProducts}
+                >
+                  <i className="bi bi-arrow-repeat"></i> Refresh
+                </button>
+              </div> */}
+            </div>
+            
+            {/* Search Results Info */}
+            {searchTerm && (
+              <div className="mt-3 pt-2 border-top">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="text-info">
+                    <i className="bi bi-info-circle"></i> 
+                    Showing results for: <strong>"{searchTerm}"</strong> in <strong>{searchField}</strong>
+                  </div>
+                  <div className="text-muted">
+                    Found {filteredProducts.length} of {products.length} products
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="table-responsive shadow-sm bg-white rounded">
           <table className="table table-striped table-hover mb-0">
@@ -108,49 +254,94 @@ function ProductList() {
                 <th>Price</th>
                 <th>Status</th>
                 <th>Stock</th>
+                <th>Business</th>
+                <th>Owner</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {products.map(product => (
-                <tr key={product.id}>
-                  <td>{product.id}</td>
+              {filteredProducts.map(product => (
+                <tr key={product._id}>
+                  <td>{product._id?.slice(-6)}</td>
                   <td>
-                    <img
-                      src={product.image}
-                      alt={`${product.name} image`}
-                      className="rounded"
-                      style={{ width: '45px', height: '45px', objectFit: 'cover' }}
-                    />
-                  </td>
+                    {product.image ? (
+                      <img
+                        src={`http://localhost:5000/${product.image.replace(/\\/g, '/')}`}
+                        alt={`${product.name} image`}
+                        className="rounded"
+                        style={{ width: '45px', height: '45px', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/45?text=No+Image';
+                        }}
+                      />
+                    ) : (
+                      <div className="bg-secondary rounded d-flex align-items-center justify-content-center" 
+                           style={{ width: '45px', height: '45px' }}>
+                        <small className="text-white">No img</small>
+                      </div>
+                    )}
+                   </td>
                   <td>
                     <div className="fw-bold">{product.name}</div>
-                    <small className="text-muted">{product.business}</small>
-                  </td>
-                  <td>{product.category}</td>
-                  <td className="fw-bold text-success">{product.price}</td>
+                   </td>
+                  <td>{product.category || 'N/A'}</td>
+                  <td className="fw-bold text-success">
+                    {typeof product.price === 'number' 
+                      ? `$${product.price.toFixed(2)}` 
+                      : product.price || 'N/A'}
+                   </td>
                   <td>
-                    <span className={`badge ${product.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>
-                      {product.status}
+                    <span className={`badge ${product.availableQuantity > 0 ? 'bg-success' : 'bg-secondary'}`}>
+                      {product.availableQuantity > 0 ? 'Active' : 'Inactive'}
                     </span>
-                  </td>
-                  <td>{product.stock}</td>
+                   </td>
+                  <td>{product.availableQuantity || 0}</td>
+                  <td>
+                    <div>
+                      <strong>{product.businessDetails?.businessName || 'N/A'}</strong>
+                    </div>
+                   </td>
+                  <td>{product.businessDetails?.ownerName || 'N/A'}</td>
                   <td>
                     <div className="btn-group btn-group-sm" role="group">
-                      <button className="btn btn-info" onClick={() => handleView(product.id)}>
+                      <button 
+                        className="btn btn-info" 
+                        onClick={() => handleView(product._id)}
+                      >
                         <i className="bi bi-eye"></i> View
                       </button>
-                      <button className="btn btn-danger" onClick={() => handleDelete(product.id)}>
+                      <button 
+                        className="btn btn-danger" 
+                        onClick={() => handleDelete(product._id)}
+                      >
                         <i className="bi bi-trash"></i>
                       </button>
                     </div>
-                  </td>
-                </tr>
+                   </td>
+                 </tr>
               ))}
-              {products.length === 0 && (
+              {filteredProducts.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="text-center py-4 text-muted">
-                    No products found
+                  <td colSpan="10" className="text-center py-4">
+                    {searchTerm ? (
+                      <div>
+                        <i className="bi bi-search fs-1 text-muted"></i>
+                        <p className="text-muted mt-2">
+                          No products found matching "<strong>{searchTerm}</strong>" in {searchField}
+                        </p>
+                        <button 
+                          className="btn btn-sm btn-outline-primary" 
+                          onClick={clearSearch}
+                        >
+                          Clear Search
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <i className="bi bi-inbox fs-1 text-muted"></i>
+                        <p className="text-muted mt-2">No products found in database</p>
+                      </div>
+                    )}
                   </td>
                 </tr>
               )}
@@ -170,27 +361,66 @@ function ProductList() {
               <div className="modal-body">
                 <div className="row">
                   <div className="col-md-4 text-center">
-                    <img
-                      src={selectedProduct.image}
-                      alt={selectedProduct.name}
-                      className="img-fluid rounded mb-3"
-                      style={{ maxHeight: '220px', objectFit: 'cover' }}
-                    />
-                    <span className={`badge ${selectedProduct.status === 'Active' ? 'bg-success' : 'bg-secondary'} fs-6`}>
-                      {selectedProduct.status}
+                    {selectedProduct.image ? (
+                      <img
+                        src={`http://localhost:5000/${selectedProduct.image.replace(/\\/g, '/')}`}
+                        alt={selectedProduct.name}
+                        className="img-fluid rounded mb-3"
+                        style={{ maxHeight: '220px', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/220?text=No+Image';
+                        }}
+                      />
+                    ) : (
+                      <div className="bg-secondary rounded d-flex align-items-center justify-content-center mb-3"
+                           style={{ height: '220px' }}>
+                        <span className="text-white">No Image Available</span>
+                      </div>
+                    )}
+                    <span className={`badge ${selectedProduct.availableQuantity > 0 ? 'bg-success' : 'bg-secondary'} fs-6`}>
+                      {selectedProduct.availableQuantity > 0 ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   <div className="col-md-8">
                     <h4 className="mb-2">{selectedProduct.name}</h4>
-                    <p className="text-muted mb-3">{selectedProduct.description}</p>
+                    <p className="text-muted mb-3">{selectedProduct.description || 'No description available'}</p>
                     <dl className="row">
-                      <dt className="col-4">SKU</dt><dd className="col-8">{selectedProduct.sku}</dd>
-                      <dt className="col-4">Supplier</dt><dd className="col-8">{selectedProduct.supplier}</dd>
-                      <dt className="col-4">Business</dt><dd className="col-8">{selectedProduct.business}</dd>
-                      <dt className="col-4">Category</dt><dd className="col-8">{selectedProduct.category}</dd>
-                      <dt className="col-4">Price</dt><dd className="col-8">{selectedProduct.price}</dd>
-                      <dt className="col-4">Stock</dt><dd className="col-8">{selectedProduct.stock}</dd>
-                      <dt className="col-4">Added</dt><dd className="col-8">{selectedProduct.createdAt}</dd>
+                      <dt className="col-4">Business</dt>
+                      <dd className="col-8">
+                        <strong>{selectedProduct.businessDetails?.businessName || 'N/A'}</strong>
+                      </dd>
+                      
+                      <dt className="col-4">Owner</dt>
+                      <dd className="col-8">{selectedProduct.businessDetails?.ownerName || 'N/A'}</dd>
+                      
+                      <dt className="col-4">Category</dt>
+                      <dd className="col-8">{selectedProduct.category || 'N/A'}</dd>
+                      
+                      <dt className="col-4">Price</dt>
+                      <dd className="col-8">
+                        {typeof selectedProduct.price === 'number' 
+                          ? `$${selectedProduct.price.toFixed(2)}` 
+                          : selectedProduct.price || 'N/A'}
+                      </dd>
+                      
+                      <dt className="col-4">Stock</dt>
+                      <dd className="col-8">{selectedProduct.availableQuantity || 0}</dd>
+                      
+                      <dt className="col-4">Size</dt>
+                      <dd className="col-8">{selectedProduct.size || 'N/A'}</dd>
+                      
+                      <dt className="col-4">Colors</dt>
+                      <dd className="col-8">{selectedProduct.colors || 'N/A'}</dd>
+                      
+                      <dt className="col-4">Method</dt>
+                      <dd className="col-8">{selectedProduct.method || 'N/A'}</dd>
+                      
+                      <dt className="col-4">Added Date</dt>
+                      <dd className="col-8">
+                        {selectedProduct.createdAt 
+                          ? new Date(selectedProduct.createdAt).toLocaleDateString() 
+                          : 'N/A'}
+                      </dd>
                     </dl>
                   </div>
                 </div>
