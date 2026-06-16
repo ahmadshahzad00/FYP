@@ -28,7 +28,67 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+// Configure multer for multiple images (max 5)
+const upload = multer({ 
+  storage,
+  limits: { files: 5 }
+}).array("images", 5);
+
+// Helper function to check a single image for EXIF and AI
+const checkImage = async (filePath) => {
+  // EXIF check
+  let hasExif = false;
+  try {
+    const buffer = fs.readFileSync(filePath);
+    const parsed = exifParser.create(buffer).parse();
+    if (parsed?.tags && Object.keys(parsed.tags).length > 0) {
+      hasExif = true;
+    }
+  } catch (err) {
+    // EXIF parsing failed, continue
+  }
+
+  if (hasExif) {
+    fs.unlinkSync(filePath);
+    return { passed: false, message: "Image rejected. EXIF metadata detected." };
+  }
+
+  // AI check (Optional - can be disabled if API keys not set)
+  if (process.env.SIGHTENGINE_USER && process.env.SIGHTENGINE_SECRET) {
+    try {
+      const formData = new FormData();
+      formData.append("media", fs.createReadStream(filePath));
+      formData.append("models", "genai,deepfake");
+      formData.append("api_user", process.env.SIGHTENGINE_USER);
+      formData.append("api_secret", process.env.SIGHTENGINE_SECRET);
+
+      const aiResponse = await axios.post(
+        "https://api.sightengine.com/1.0/check.json",
+        formData,
+        {
+          headers: formData.getHeaders(),
+          timeout: 10000,
+        }
+      );
+
+      const result = aiResponse.data;
+      let aiProbability = 0;
+
+      if (result.type?.ai_generated) {
+        aiProbability = result.type.ai_generated * 100;
+      }
+
+      if (aiProbability > 40) {
+        fs.unlinkSync(filePath);
+        return { passed: false, message: "AI generated image detected. Please upload a real product image." };
+      }
+    } catch (aiError) {
+      // Silent fail - continue without AI check
+    }
+  }
+
+  return { passed: true, message: "Image passed" };
+};
 
 // Test route
 router.get("/test", (req, res) => {
@@ -85,279 +145,298 @@ router.get("/product/:id", async (req, res) => {
   }
 });
 
-// POST create new product
-router.post("/upload-product", upload.single("image"), async (req, res) => {
-  try {
-    const {
-      businessId,
-      name,
-      category,
-      description,
-      size,
-      colors,
-      price,
-      method,
-      availableQuantity,
-    } = req.body;
-
-    // Validate required fields
-    if (!businessId) {
+// POST create new product with multiple images
+router.post("/upload-product", (req, res) => {
+  upload(req, res, async (err) => {
+    if (err) {
+      console.error("Upload error:", err);
       return res.status(400).json({
         success: false,
-        message: "Business ID is required",
+        message: err.message || "Error uploading files",
       });
     }
 
-    if (!name) {
-      return res.status(400).json({
-        success: false,
-        message: "Product name is required",
-      });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "Product image required",
-      });
-    }
-
-    // Verify business exists
-    const business = await Business.findById(businessId);
-    if (!business) {
-      // Clean up uploaded file
-      fs.unlinkSync(req.file.path);
-      return res.status(404).json({
-        success: false,
-        message: "Business not found",
-      });
-    }
-
-    /* ==========================
-       EXIF CHECK
-    ========================== */
-    let hasExif = false;
     try {
-      const buffer = fs.readFileSync(req.file.path);
-      const parsed = exifParser.create(buffer).parse();
-      if (parsed?.tags && Object.keys(parsed.tags).length > 0) {
-        hasExif = true;
-      }
-    } catch (err) {
-      // EXIF parsing failed, continue
-    }
+      const {
+        businessId,
+        name,
+        category,
+        description,
+        size,
+        colors,
+        price,
+        method,
+        availableQuantity,
+      } = req.body;
 
-    if (hasExif) {
-      fs.unlinkSync(req.file.path);
-      return res.status(400).json({
-        success: false,
-        message: "Image rejected. EXIF metadata detected.",
-      });
-    }
-
-    /* ==========================
-       AI CHECK (Optional - can be disabled if API keys not set)
-    ========================== */
-    if (process.env.SIGHTENGINE_USER && process.env.SIGHTENGINE_SECRET) {
-      try {
-        const formData = new FormData();
-        formData.append("media", fs.createReadStream(req.file.path));
-        formData.append("models", "genai,deepfake");
-        formData.append("api_user", process.env.SIGHTENGINE_USER);
-        formData.append("api_secret", process.env.SIGHTENGINE_SECRET);
-
-        const aiResponse = await axios.post(
-          "https://api.sightengine.com/1.0/check.json",
-          formData,
-          {
-            headers: formData.getHeaders(),
-            timeout: 10000,
-          }
-        );
-
-        const result = aiResponse.data;
-        let aiProbability = 0;
-
-        if (result.type?.ai_generated) {
-          aiProbability = result.type.ai_generated * 100;
-        }
-
-        if (aiProbability > 40) {
-          fs.unlinkSync(req.file.path);
-          return res.status(400).json({
-            success: false,
-            message: "Please upload a real product image. AI generated image detected.",
-            aiProbability,
-          });
-        }
-      } catch (aiError) {
-        console.error("AI Check Error:", aiError.message);
-        // Continue without AI check if it fails
-      }
-    }
-
-    /* ==========================
-       SAVE PRODUCT
-    ========================== */
-    const product = await Product.create({
-      businessId,
-      name,
-      category: category || "",
-      description: description || "",
-      size: size || "",
-      colors: colors || "",
-      price: price || "",
-      method: method || "",
-      availableQuantity: availableQuantity || 0,
-      image: req.file.path,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "Product uploaded successfully",
-      product,
-    });
-  } catch (error) {
-    console.error(error);
-    
-    // Clean up uploaded file if it exists
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
-
-// PUT update product
-router.put("/update-product/:id", upload.single("image"), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      name,
-      category,
-      description,
-      size,
-      colors,
-      price,
-      method,
-      availableQuantity,
-    } = req.body;
-
-    // Find existing product
-    const existingProduct = await Product.findById(id);
-    if (!existingProduct) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
-    }
-
-    // Prepare update data
-    const updateData = {
-      name: name || existingProduct.name,
-      category: category || existingProduct.category,
-      description: description || existingProduct.description,
-      size: size || existingProduct.size,
-      colors: colors || existingProduct.colors,
-      price: price || existingProduct.price,
-      method: method || existingProduct.method,
-      availableQuantity: availableQuantity || existingProduct.availableQuantity,
-    };
-
-    // If new image uploaded, process it
-    if (req.file) {
-      // Check EXIF for new image
-      let hasExif = false;
-      try {
-        const buffer = fs.readFileSync(req.file.path);
-        const parsed = exifParser.create(buffer).parse();
-        if (parsed?.tags && Object.keys(parsed.tags).length > 0) {
-          hasExif = true;
-        }
-      } catch (err) {}
-
-      if (hasExif) {
-        fs.unlinkSync(req.file.path);
+      // Validate required fields
+      if (!businessId) {
         return res.status(400).json({
           success: false,
-          message: "Image rejected. EXIF metadata detected.",
+          message: "Business ID is required",
         });
       }
 
-      // AI check for new image
-      if (process.env.SIGHTENGINE_USER && process.env.SIGHTENGINE_SECRET) {
-        try {
-          const formData = new FormData();
-          formData.append("media", fs.createReadStream(req.file.path));
-          formData.append("models", "genai,deepfake");
-          formData.append("api_user", process.env.SIGHTENGINE_USER);
-          formData.append("api_secret", process.env.SIGHTENGINE_SECRET);
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          message: "Product name is required",
+        });
+      }
 
-          const aiResponse = await axios.post(
-            "https://api.sightengine.com/1.0/check.json",
-            formData,
-            {
-              headers: formData.getHeaders(),
-              timeout: 10000,
-            }
-          );
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "At least one product image is required",
+        });
+      }
 
-          const result = aiResponse.data;
-          let aiProbability = 0;
-
-          if (result.type?.ai_generated) {
-            aiProbability = result.type.ai_generated * 100;
+      if (req.files.length > 5) {
+        // Clean up uploaded files
+        req.files.forEach(file => {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
           }
+        });
+        return res.status(400).json({
+          success: false,
+          message: "Maximum 5 images allowed",
+        });
+      }
 
-          if (aiProbability > 40) {
-            fs.unlinkSync(req.file.path);
-            return res.status(400).json({
-              success: false,
-              message: "Please upload a real product image. AI generated image detected.",
-            });
+      // Verify business exists
+      const business = await Business.findById(businessId);
+      if (!business) {
+        // Clean up uploaded files
+        req.files.forEach(file => {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
           }
-        } catch (aiError) {
-          console.error("AI Check Error:", aiError.message);
+        });
+        return res.status(404).json({
+          success: false,
+          message: "Business not found",
+        });
+      }
+
+      // Check all images - FAIL if ANY image fails
+      const failedImages = [];
+      const validImagePaths = [];
+
+      for (const file of req.files) {
+        const result = await checkImage(file.path);
+        if (result.passed) {
+          validImagePaths.push(file.path);
+        } else {
+          failedImages.push({ filename: file.originalname, error: result.message });
         }
       }
 
-      // Delete old image
-      if (existingProduct.image && fs.existsSync(existingProduct.image)) {
-        fs.unlinkSync(existingProduct.image);
+      // If ANY image fails, reject the entire upload
+      if (failedImages.length > 0) {
+        // Clean up any valid images that were uploaded
+        validImagePaths.forEach(path => {
+          if (fs.existsSync(path)) {
+            fs.unlinkSync(path);
+          }
+        });
+        
+        return res.status(400).json({
+          success: false,
+          message: `Upload failed: ${failedImages.length} image(s) failed validation`,
+          errors: failedImages,
+        });
+      }
+
+      // Save product with multiple images
+      const product = await Product.create({
+        businessId,
+        name,
+        category: category || "",
+        description: description || "",
+        size: size || "",
+        colors: colors || "",
+        price: price || "",
+        method: method || "",
+        availableQuantity: availableQuantity || 0,
+        images: validImagePaths,
+        image: validImagePaths[0],
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Product uploaded successfully",
+        product,
+      });
+    } catch (error) {
+      console.error(error);
+      
+      // Clean up uploaded files if they exist
+      if (req.files) {
+        req.files.forEach(file => {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        });
       }
       
-      updateData.image = req.file.path;
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  });
+});
+
+// PUT update product with multiple images
+router.put("/update-product/:id", (req, res) => {
+  upload(req, res, async (err) => {
+    if (err) {
+      console.error("Upload error:", err);
+      return res.status(400).json({
+        success: false,
+        message: err.message || "Error uploading files",
+      });
     }
 
-    // Update product
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    try {
+      const { id } = req.params;
+      const {
+        name,
+        category,
+        description,
+        size,
+        colors,
+        price,
+        method,
+        availableQuantity,
+        existingImages,
+      } = req.body;
 
-    return res.status(200).json({
-      success: true,
-      message: "Product updated successfully",
-      product: updatedProduct,
-    });
-  } catch (error) {
-    console.error(error);
-    
-    // Clean up uploaded file if it exists
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+      // Find existing product
+      const existingProduct = await Product.findById(id);
+      if (!existingProduct) {
+        if (req.files) {
+          req.files.forEach(file => {
+            if (fs.existsSync(file.path)) {
+              fs.unlinkSync(file.path);
+            }
+          });
+        }
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // Check new images if any - FAIL if ANY fails
+      let failedImages = [];
+      let validNewImages = [];
+
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          const result = await checkImage(file.path);
+          if (result.passed) {
+            validNewImages.push(file.path);
+          } else {
+            failedImages.push({ filename: file.originalname, error: result.message });
+          }
+        }
+
+        // If ANY new image fails, reject the entire update
+        if (failedImages.length > 0) {
+          // Clean up valid new images
+          validNewImages.forEach(path => {
+            if (fs.existsSync(path)) {
+              fs.unlinkSync(path);
+            }
+          });
+          
+          return res.status(400).json({
+            success: false,
+            message: `Update failed: ${failedImages.length} image(s) failed validation`,
+            errors: failedImages,
+          });
+        }
+      }
+
+      // Prepare update data
+      const updateData = {
+        name: name || existingProduct.name,
+        category: category || existingProduct.category,
+        description: description || existingProduct.description,
+        size: size || existingProduct.size,
+        colors: colors || existingProduct.colors,
+        price: price || existingProduct.price,
+        method: method || existingProduct.method,
+        availableQuantity: availableQuantity || existingProduct.availableQuantity,
+      };
+
+      // Handle images update
+      let newImages = [];
+      
+      if (existingImages) {
+        const keepImages = existingImages.split(',');
+        newImages = keepImages.filter(img => img && img.trim());
+      } else if (existingProduct.images) {
+        newImages = [...existingProduct.images];
+      }
+
+      // Add valid new images
+      newImages = [...newImages, ...validNewImages];
+      
+      // Limit to max 5 images
+      if (newImages.length > 5) {
+        const removedImages = newImages.splice(5);
+        removedImages.forEach(img => {
+          if (fs.existsSync(img)) {
+            fs.unlinkSync(img);
+          }
+        });
+      }
+
+      // Delete old images that are not kept
+      const oldImages = existingProduct.images || [];
+      const imagesToDelete = oldImages.filter(img => !newImages.includes(img));
+      
+      imagesToDelete.forEach(img => {
+        if (fs.existsSync(img)) {
+          fs.unlinkSync(img);
+        }
+      });
+
+      updateData.images = newImages;
+      updateData.image = newImages[0] || existingProduct.image;
+
+      // Update product
+      const updatedProduct = await Product.findByIdAndUpdate(
+        id,
+        updateData,
+        { new: true, runValidators: true }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Product updated successfully",
+        product: updatedProduct,
+      });
+    } catch (error) {
+      console.error(error);
+      
+      if (req.files) {
+        req.files.forEach(file => {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        });
+      }
+      
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
     }
-    
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  });
 });
 
 // DELETE product
@@ -373,12 +452,16 @@ router.delete("/delete-product/:id", async (req, res) => {
       });
     }
     
-    // Delete image file
-    if (product.image && fs.existsSync(product.image)) {
+    if (product.images && product.images.length > 0) {
+      product.images.forEach(image => {
+        if (fs.existsSync(image)) {
+          fs.unlinkSync(image);
+        }
+      });
+    } else if (product.image && fs.existsSync(product.image)) {
       fs.unlinkSync(product.image);
     }
     
-    // Delete product from database
     await Product.findByIdAndDelete(id);
     
     return res.status(200).json({
@@ -397,7 +480,6 @@ router.delete("/delete-product/:id", async (req, res) => {
 // GET all products with business details
 router.get("/products-with-business", async (req, res) => {
   try {
-    // Fetch all products
     const products = await Product.find({})
       .sort({ createdAt: -1 })
       .lean();
@@ -411,16 +493,13 @@ router.get("/products-with-business", async (req, res) => {
       });
     }
 
-    // Get unique business IDs from products
     const businessIds = [...new Set(products.map(p => p.businessId).filter(Boolean))];
     
-    // Fetch all businesses with their details
     const businesses = await Business.find(
       { _id: { $in: businessIds } },
       { _id: 1, companyName: 1, ownerName: 1 }
     ).lean();
 
-    // Create a map for quick business lookup
     const businessMap = new Map();
     businesses.forEach(business => {
       businessMap.set(business._id.toString(), {
@@ -429,7 +508,6 @@ router.get("/products-with-business", async (req, res) => {
       });
     });
 
-    // Attach business details to each product
     const productsWithBusiness = products.map(product => ({
       ...product,
       businessDetails: businessMap.get(product.businessId?.toString()) || {
@@ -447,7 +525,7 @@ router.get("/products-with-business", async (req, res) => {
     console.error("Error in /products-with-business:", error);
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 });

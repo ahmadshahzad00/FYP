@@ -118,6 +118,7 @@ function BusinessRegister() {
 
                     <div className="col-md-6">
                       <label className="form-label">Business Email *</label>
+                      <small className="text-muted">We will use this to contact you about your business</small>
                       <input type="email" name="email" className="form-control" required onChange={handleChange}/>
                     </div>
 
@@ -146,7 +147,8 @@ function BusinessRegister() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">NTN Number *</label>
+                      <label className="form-label">MemberID * </label>
+                      <small className="text-muted">Enter your Chamber of Commerce MemberID</small>
                       <input type="text" name="ntnNumber" className="form-control" required onChange={handleChange}/>
                     </div>
 

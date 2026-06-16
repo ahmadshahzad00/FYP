@@ -54,11 +54,11 @@ function AdminSidebar() {
               <i className="bi bi-box-seam me-2"></i> Products List
             </Link>
           </li>
-          <li className="nav-item">
+          {/* <li className="nav-item">
             <Link to="/businessList" className="nav-link text-white">
               <i className="bi bi-building me-2"></i> Business List
             </Link>
-          </li>
+          </li> */}
           <li className="nav-item">
             <Link to="/businessRequests" className="nav-link text-white">
               <i className="bi bi-envelope-paper me-2"></i> Business Requests

@@ -12,7 +12,9 @@ function ProductList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchField, setSearchField] = useState('name'); // 'name', 'business', 'category', 'owner'
+  const [searchField, setSearchField] = useState('name');
+  const [zoomImage, setZoomImage] = useState(null);
+  const [showZoomModal, setShowZoomModal] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -82,12 +84,17 @@ function ProductList() {
 
   const handleSearchFieldChange = (e) => {
     setSearchField(e.target.value);
-    setSearchTerm(''); // Clear search term when changing field
+    setSearchTerm('');
   };
 
   const clearSearch = () => {
     setSearchTerm('');
     setFilteredProducts(products);
+  };
+
+  const handleImageZoom = (imageUrl) => {
+    setZoomImage(imageUrl);
+    setShowZoomModal(true);
   };
 
   const handleView = (id) => {
@@ -216,14 +223,6 @@ function ProductList() {
                   )}
                 </div>
               </div>
-              {/* <div className="col-md-2">
-                <button 
-                  className="btn btn-primary w-100" 
-                  onClick={fetchProducts}
-                >
-                  <i className="bi bi-arrow-repeat"></i> Refresh
-                </button>
-              </div> */}
             </div>
             
             {/* Search Results Info */}
@@ -248,7 +247,7 @@ function ProductList() {
             <thead className="table-dark">
               <tr>
                 <th>ID</th>
-                <th>Image</th>
+                <th>Images</th>
                 <th>Product</th>
                 <th>Category</th>
                 <th>Price</th>
@@ -260,66 +259,90 @@ function ProductList() {
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.map(product => (
-                <tr key={product._id}>
-                  <td>{product._id?.slice(-6)}</td>
-                  <td>
-                    {product.image ? (
-                      <img
-                        src={`http://localhost:5000/${product.image.replace(/\\/g, '/')}`}
-                        alt={`${product.name} image`}
-                        className="rounded"
-                        style={{ width: '45px', height: '45px', objectFit: 'cover' }}
-                        onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/45?text=No+Image';
-                        }}
-                      />
-                    ) : (
-                      <div className="bg-secondary rounded d-flex align-items-center justify-content-center" 
-                           style={{ width: '45px', height: '45px' }}>
-                        <small className="text-white">No img</small>
+              {filteredProducts.map(product => {
+                const productImages = product.images || (product.image ? [product.image] : []);
+                
+                return (
+                  <tr key={product._id}>
+                    <td>{product._id?.slice(-6)}</td>
+                    <td>
+                      <div className="d-flex gap-1">
+                        {productImages.slice(0, 3).map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={`http://localhost:5000/${img.replace(/\\/g, '/')}`}
+                            alt={`${product.name} ${idx + 1}`}
+                            className="rounded"
+                            style={{ 
+                              width: '45px', 
+                              height: '45px', 
+                              objectFit: 'cover',
+                              cursor: 'pointer',
+                              border: '1px solid #ddd'
+                            }}
+                            onClick={() => handleImageZoom(`http://localhost:5000/${img.replace(/\\/g, '/')}`)}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        ))}
+                        {productImages.length > 3 && (
+                          <div 
+                            className="bg-secondary text-white rounded d-flex align-items-center justify-content-center"
+                            style={{ width: '45px', height: '45px', fontSize: '12px', cursor: 'pointer' }}
+                            onClick={() => handleImageZoom(`http://localhost:5000/${productImages[3].replace(/\\/g, '/')}`)}
+                          >
+                            +{productImages.length - 3}
+                          </div>
+                        )}
+                        {productImages.length === 0 && (
+                          <div className="bg-secondary rounded d-flex align-items-center justify-content-center" 
+                               style={{ width: '45px', height: '45px' }}>
+                            <small className="text-white">No img</small>
+                          </div>
+                        )}
                       </div>
-                    )}
-                   </td>
-                  <td>
-                    <div className="fw-bold">{product.name}</div>
-                   </td>
-                  <td>{product.category || 'N/A'}</td>
-                  <td className="fw-bold text-success">
-                    {typeof product.price === 'number' 
-                      ? `$${product.price.toFixed(2)}` 
-                      : product.price || 'N/A'}
-                   </td>
-                  <td>
-                    <span className={`badge ${product.availableQuantity > 0 ? 'bg-success' : 'bg-secondary'}`}>
-                      {product.availableQuantity > 0 ? 'Active' : 'Inactive'}
-                    </span>
-                   </td>
-                  <td>{product.availableQuantity || 0}</td>
-                  <td>
-                    <div>
-                      <strong>{product.businessDetails?.businessName || 'N/A'}</strong>
-                    </div>
-                   </td>
-                  <td>{product.businessDetails?.ownerName || 'N/A'}</td>
-                  <td>
-                    <div className="btn-group btn-group-sm" role="group">
-                      <button 
-                        className="btn btn-info" 
-                        onClick={() => handleView(product._id)}
-                      >
-                        <i className="bi bi-eye"></i> View
-                      </button>
-                      <button 
-                        className="btn btn-danger" 
-                        onClick={() => handleDelete(product._id)}
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
-                    </div>
-                   </td>
-                 </tr>
-              ))}
+                    </td>
+                    <td>
+                      <div className="fw-bold">{product.name}</div>
+                    </td>
+                    <td>{product.category || 'N/A'}</td>
+                    <td className="fw-bold text-success">
+                      {typeof product.price === 'number' 
+                        ? `$${product.price.toFixed(2)}` 
+                        : product.price || 'N/A'}
+                    </td>
+                    <td>
+                      <span className={`badge ${product.availableQuantity > 0 ? 'bg-success' : 'bg-secondary'}`}>
+                        {product.availableQuantity > 0 ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td>{product.availableQuantity || 0}</td>
+                    <td>
+                      <div>
+                        <strong>{product.businessDetails?.businessName || 'N/A'}</strong>
+                      </div>
+                    </td>
+                    <td>{product.businessDetails?.ownerName || 'N/A'}</td>
+                    <td>
+                      <div className="btn-group btn-group-sm" role="group">
+                        <button 
+                          className="btn btn-info" 
+                          onClick={() => handleView(product._id)}
+                        >
+                          <i className="bi bi-eye"></i> View
+                        </button>
+                        <button 
+                          className="btn btn-danger" 
+                          onClick={() => handleDelete(product._id)}
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filteredProducts.length === 0 && (
                 <tr>
                   <td colSpan="10" className="text-center py-4">
@@ -350,6 +373,7 @@ function ProductList() {
         </div>
       </div>
 
+      {/* Product Details Modal */}
       {showModal && selectedProduct && (
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
@@ -361,22 +385,28 @@ function ProductList() {
               <div className="modal-body">
                 <div className="row">
                   <div className="col-md-4 text-center">
-                    {selectedProduct.image ? (
-                      <img
-                        src={`http://localhost:5000/${selectedProduct.image.replace(/\\/g, '/')}`}
-                        alt={selectedProduct.name}
-                        className="img-fluid rounded mb-3"
-                        style={{ maxHeight: '220px', objectFit: 'cover' }}
-                        onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/220?text=No+Image';
-                        }}
-                      />
-                    ) : (
-                      <div className="bg-secondary rounded d-flex align-items-center justify-content-center mb-3"
-                           style={{ height: '220px' }}>
-                        <span className="text-white">No Image Available</span>
-                      </div>
-                    )}
+                    {/* Display multiple images in modal */}
+                    <div className="d-flex flex-wrap gap-2 justify-content-center mb-3">
+                      {(selectedProduct.images || [selectedProduct.image]).slice(0, 4).map((img, idx) => (
+                        <img
+                          key={idx}
+                          src={`http://localhost:5000/${img.replace(/\\/g, '/')}`}
+                          alt={`${selectedProduct.name} ${idx + 1}`}
+                          className="rounded"
+                          style={{ 
+                            width: '100px', 
+                            height: '100px', 
+                            objectFit: 'cover',
+                            cursor: 'pointer',
+                            border: '1px solid #ddd'
+                          }}
+                          onClick={() => handleImageZoom(`http://localhost:5000/${img.replace(/\\/g, '/')}`)}
+                          onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/100?text=No+Image';
+                          }}
+                        />
+                      ))}
+                    </div>
                     <span className={`badge ${selectedProduct.availableQuantity > 0 ? 'bg-success' : 'bg-secondary'} fs-6`}>
                       {selectedProduct.availableQuantity > 0 ? 'Active' : 'Inactive'}
                     </span>
@@ -429,6 +459,40 @@ function ProductList() {
                 <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
                   Close
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Zoom Modal */}
+      {showZoomModal && zoomImage && (
+        <div 
+          className="modal fade show d-block" 
+          style={{ backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 9999 }}
+          onClick={() => setShowZoomModal(false)}
+        >
+          <div className="modal-dialog modal-xl modal-dialog-centered">
+            <div className="modal-content bg-transparent border-0">
+              <div className="modal-body text-center p-0">
+                <button 
+                  className="btn btn-light position-absolute top-0 end-0 m-3 rounded-circle"
+                  style={{ zIndex: 1 }}
+                  onClick={() => setShowZoomModal(false)}
+                >
+                  <i className="bi bi-x-lg"></i>
+                </button>
+                <img
+                  src={zoomImage}
+                  alt="Zoomed product"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '90vh',
+                    objectFit: 'contain',
+                    borderRadius: '8px'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
               </div>
             </div>
           </div>

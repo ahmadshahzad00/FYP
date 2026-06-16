@@ -11,7 +11,7 @@ function BusinessProfile() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState("name");
   const [form, setForm] = useState({
-    image: null,
+    images: [],
     name: "",
     category: "",
     description: "",
@@ -21,9 +21,13 @@ function BusinessProfile() {
     method: "",
     availableQuantity: "",
   });
-
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editImageChanged, setEditImageChanged] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [zoomImage, setZoomImage] = useState(null);
+  const [showZoomModal, setShowZoomModal] = useState(false);
 
   useEffect(() => {
     fetchBusiness();
@@ -44,7 +48,6 @@ function BusinessProfile() {
         }
       );
       setBusinessInfo(res.data);
-      // After getting business info, fetch its products
       await fetchProducts(res.data._id);
     } catch (err) {
       console.error(err);
@@ -64,11 +67,11 @@ function BusinessProfile() {
         }
       );
       
-      // Format products with full image URL
       const formattedProducts = res.data.products.map(product => ({
         ...product,
         id: product._id,
-        image: product.image ? `http://localhost:5000/${product.image}` : null,
+        images: product.images || [],
+        image: product.image || (product.images && product.images[0]),
       }));
       
       setProducts(formattedProducts);
@@ -120,9 +123,40 @@ function BusinessProfile() {
     setFilteredProducts(products);
   };
 
+  const handleImageZoom = (imageUrl) => {
+    setZoomImage(imageUrl);
+    setShowZoomModal(true);
+  };
+
+  const handleImageSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 5) {
+      alert("Maximum 5 images allowed");
+      return;
+    }
+    
+    setForm({ ...form, images: files });
+    setEditImageChanged(true);
+    
+    // Create previews
+    const previews = files.map(file => URL.createObjectURL(file));
+    setImagePreviews(previews);
+  };
+
+  const removeImage = (index) => {
+    const newImages = [...form.images];
+    newImages.splice(index, 1);
+    setForm({ ...form, images: newImages });
+    
+    const newPreviews = [...imagePreviews];
+    URL.revokeObjectURL(newPreviews[index]);
+    newPreviews.splice(index, 1);
+    setImagePreviews(newPreviews);
+  };
+
   const openAddModal = () => {
     setForm({
-      image: null,
+      images: [],
       name: "",
       category: "",
       description: "",
@@ -132,6 +166,8 @@ function BusinessProfile() {
       method: "",
       availableQuantity: "",
     });
+    setImagePreviews([]);
+    setExistingImages([]);
     setEditId(null);
     setEditImageChanged(false);
   };
@@ -139,7 +175,7 @@ function BusinessProfile() {
   const openEditModal = (product) => {
     setForm({
       id: product._id,
-      image: null,
+      images: [],
       name: product.name,
       category: product.category,
       description: product.description,
@@ -149,18 +185,21 @@ function BusinessProfile() {
       method: product.method,
       availableQuantity: product.availableQuantity,
     });
+    setExistingImages(product.images || []);
+    setImagePreviews([]);
     setEditId(product._id);
     setEditImageChanged(false);
   };
 
   const handleSave = async () => {
-    try {
-      // For edit mode, image is optional
-      if (!editId && !form.image) {
-        alert("Please select a product image");
-        return;
-      }
+    if (!editId && form.images.length === 0) {
+      alert("Please select at least one product image");
+      return;
+    }
 
+    setUploading(true);
+
+    try {
       const data = new FormData();
       data.append("businessId", businessInfo._id);
       data.append("name", form.name);
@@ -172,15 +211,19 @@ function BusinessProfile() {
       data.append("method", form.method);
       data.append("availableQuantity", form.availableQuantity);
       
-      // Only append image if it's a new file or in add mode
-      if (form.image && (editImageChanged || !editId)) {
-        data.append("image", form.image);
+      if (editId && existingImages.length > 0) {
+        data.append("existingImages", existingImages.join(','));
+      }
+      
+      if (form.images && form.images.length > 0) {
+        for (let i = 0; i < form.images.length; i++) {
+          data.append("images", form.images[i]);
+        }
       }
 
       let res;
       
       if (editId) {
-        // Update existing product
         res = await axios.put(
           `http://localhost:5000/api/product/update-product/${editId}`,
           data,
@@ -191,14 +234,9 @@ function BusinessProfile() {
             },
           }
         );
-        
         alert(res.data.message);
-        
-        // Refresh products list
         await fetchProducts(businessInfo._id);
-        
       } else {
-        // Create new product
         res = await axios.post(
           "http://localhost:5000/api/product/upload-product",
           data,
@@ -211,15 +249,7 @@ function BusinessProfile() {
         );
         
         alert(res.data.message);
-        
-        // Add new product to state
-        const newProduct = {
-          ...res.data.product,
-          id: res.data.product._id,
-          image: `http://localhost:5000/${res.data.product.image}`,
-        };
-        setProducts([...products, newProduct]);
-        setFilteredProducts([...filteredProducts, newProduct]);
+        await fetchProducts(businessInfo._id);
       }
       
       // Close modal
@@ -228,16 +258,20 @@ function BusinessProfile() {
       if (bootstrapModal) {
         bootstrapModal.hide();
       } else {
-        // Fallback: click close button
         const closeBtn = modal.querySelector(".btn-close");
         if (closeBtn) closeBtn.click();
       }
       
     } catch (err) {
-      alert(
-        err.response?.data?.message ||
-        "Failed to save product"
-      );
+      // Display detailed error message
+      if (err.response?.data?.errors) {
+        const errorMessages = err.response.data.errors.map(e => `${e.filename}: ${e.error}`).join('\n');
+        alert(`Upload failed:\n${errorMessages}`);
+      } else {
+        alert(err.response?.data?.message || "Failed to save product");
+      }
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -406,17 +440,16 @@ function BusinessProfile() {
                       )}
                     </div>
                   </div>
-                  <div className="col-md-2">
+                  {/* <div className="col-md-2">
                     <button 
                       className="btn btn-outline-primary btn-sm w-100" 
                       onClick={() => fetchProducts(businessInfo._id)}
                     >
                       <i className="bi bi-arrow-repeat"></i> Refresh
                     </button>
-                  </div>
+                  </div> */}
                 </div>
                 
-                {/* Search Results Info */}
                 {searchTerm && (
                   <div className="mt-2 pt-1">
                     <small className="text-info">
@@ -467,7 +500,7 @@ function BusinessProfile() {
                   <table className="table table-hover align-middle mb-0">
                     <thead className="table-light">
                       <tr>
-                        <th>Image</th>
+                        <th>Images</th>
                         <th>Name</th>
                         <th>Category</th>
                         <th>Size</th>
@@ -478,53 +511,56 @@ function BusinessProfile() {
                         <th className="text-end">Action</th>
                       </tr>
                     </thead>
-
                     <tbody>
                       {filteredProducts.map((p) => (
                         <tr key={p.id}>
                           <td>
-                            {p.image ? (
-                              <img
-                                src={p.image}
-                                alt={p.name}
-                                style={{
-                                  width: "50px",
-                                  height: "50px",
-                                  objectFit: "cover",
-                                  borderRadius: "6px",
-                                }}
-                                onError={(e) => {
-                                  e.target.style.display = "none";
-                                  e.target.parentElement.innerHTML = '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:6px;display:flex;align-items:center;justify-content:center"><i class="bi bi-image"></i></div>';
-                                }}
-                              />
-                            ) : (
-                              <div style={{width:"50px",height:"50px",background:"#f0f0f0",borderRadius:"6px",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                                <i className="bi bi-image"></i>
-                              </div>
-                            )}
+                            <div className="d-flex gap-1">
+                              {(p.images || [p.image]).slice(0, 3).map((img, idx) => (
+                                <img
+                                  key={idx}
+                                  src={`http://localhost:5000/${img}`}
+                                  alt={`${p.name} ${idx + 1}`}
+                                  style={{
+                                    width: "45px",
+                                    height: "45px",
+                                    objectFit: "cover",
+                                    borderRadius: "4px",
+                                    cursor: "pointer",
+                                    border: "1px solid #ddd"
+                                  }}
+                                  onClick={() => handleImageZoom(`http://localhost:5000/${img}`)}
+                                  onError={(e) => {
+                                    e.target.style.display = "none";
+                                  }}
+                                />
+                              ))}
+                              {p.images && p.images.length > 3 && (
+                                <div 
+                                  className="bg-secondary text-white rounded d-flex align-items-center justify-content-center"
+                                  style={{ width: "45px", height: "45px", fontSize: "12px", cursor: "pointer" }}
+                                  onClick={() => handleImageZoom(`http://localhost:5000/${p.images[3]}`)}
+                                >
+                                  +{p.images.length - 3}
+                                </div>
+                              )}
+                            </div>
                           </td>
-
                           <td className="fw-semibold">{p.name}</td>
-
                           <td>
                             <span className="badge bg-secondary">
                               {p.category}
                             </span>
                           </td>
-
                           <td>{p.size || "-"}</td>
                           <td>{p.colors || "-"}</td>
                           <td className="fw-bold text-success">Rs. {p.price}</td>
-
                           <td>
                             <span className="badge bg-info text-dark">
                               {p.method}
                             </span>
                           </td>
-
                           <td>{p.availableQuantity}</td>
-
                           <td className="text-end">
                             <button
                               className="btn btn-outline-secondary btn-sm me-2"
@@ -534,7 +570,6 @@ function BusinessProfile() {
                             >
                               <i className="bi bi-pencil"></i>
                             </button>
-
                             <button
                               className="btn btn-outline-danger btn-sm"
                               onClick={() => handleDelete(p.id)}
@@ -563,32 +598,27 @@ function BusinessProfile() {
                 <p><strong>Email:</strong> {businessInfo.email}</p>
                 <p><strong>Phone:</strong> {businessInfo.phone}</p>
 
-                {/* SOCIAL ICONS */}
                 <div className="d-flex gap-3 mt-3">
                   {businessInfo.facebook && (
                     <a href={businessInfo.facebook} target="_blank" rel="noopener noreferrer">
                       <i className="bi bi-facebook fs-5 text-primary"></i>
                     </a>
                   )}
-
                   {businessInfo.instagram && (
                     <a href={businessInfo.instagram} target="_blank" rel="noopener noreferrer">
                       <i className="bi bi-instagram fs-5 text-danger"></i>
                     </a>
                   )}
-
                   {businessInfo.tiktok && (
                     <a href={businessInfo.tiktok} target="_blank" rel="noopener noreferrer">
                       <i className="bi bi-tiktok fs-5 text-dark"></i>
                     </a>
                   )}
-
                   {businessInfo.whatsapp && (
                     <a href={`https://wa.me/${businessInfo.whatsapp}`} target="_blank" rel="noopener noreferrer">
                       <i className="bi bi-whatsapp fs-5 text-success"></i>
                     </a>
                   )}
-
                   {businessInfo.website && (
                     <a href={businessInfo.website} target="_blank" rel="noopener noreferrer">
                       <i className="bi bi-globe fs-5 text-dark"></i>
@@ -599,7 +629,7 @@ function BusinessProfile() {
                 <hr />
 
                 <p><strong>Category:</strong> {businessInfo.category}</p>
-                {businessInfo.ntnNumber && <p><strong>NTN:</strong> {businessInfo.ntnNumber}</p>}
+                {businessInfo.ntnNumber && <p><strong>MemberID:</strong> {businessInfo.ntnNumber}</p>}
               </div>
             </div>
           </div>
@@ -624,21 +654,25 @@ function BusinessProfile() {
                     className="form-control"
                     placeholder="Product Name"
                     value={form.name}
-                    onChange={(e) =>
-                      setForm({ ...form, name: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </div>
 
                 <div className="col-md-6">
-                  <input
+                  <select
                     className="form-control"
-                    placeholder="Category"
                     value={form.category}
-                    onChange={(e) =>
-                      setForm({ ...form, category: e.target.value })
-                    }
-                  />
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  >
+                    <option value="">Select Category</option>
+                    <option value="electronics">Sports Goods</option>
+                    <option value="clothing">Leather Products</option>
+                    <option value="books">Surgical Instruments</option>
+                    <option value="home">Textile & Apparel</option>
+                    <option value="home">Safety Equipment</option>
+                    <option value="home">Other</option>
+                    {/* Add more options as needed */}
+                  </select>
                 </div>
 
                 <div className="col-md-6">
@@ -646,9 +680,7 @@ function BusinessProfile() {
                     className="form-control"
                     placeholder="Size"
                     value={form.size}
-                    onChange={(e) =>
-                      setForm({ ...form, size: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, size: e.target.value })}
                   />
                 </div>
 
@@ -657,9 +689,7 @@ function BusinessProfile() {
                     className="form-control"
                     placeholder="Colors (comma separated)"
                     value={form.colors}
-                    onChange={(e) =>
-                      setForm({ ...form, colors: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, colors: e.target.value })}
                   />
                 </div>
 
@@ -669,9 +699,7 @@ function BusinessProfile() {
                     className="form-control"
                     placeholder="Price"
                     value={form.price}
-                    onChange={(e) =>
-                      setForm({ ...form, price: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, price: e.target.value })}
                   />
                 </div>
 
@@ -679,9 +707,7 @@ function BusinessProfile() {
                   <select
                     className="form-select"
                     value={form.method}
-                    onChange={(e) =>
-                      setForm({ ...form, method: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, method: e.target.value })}
                   >
                     <option value="">Select Method</option>
                     <option>Hand Made</option>
@@ -695,12 +721,7 @@ function BusinessProfile() {
                     className="form-control"
                     placeholder="Available Quantity"
                     value={form.availableQuantity}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        availableQuantity: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setForm({ ...form, availableQuantity: e.target.value })}
                   />
                 </div>
 
@@ -710,40 +731,80 @@ function BusinessProfile() {
                     className="form-control"
                     placeholder="Description"
                     value={form.description}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
                   />
                 </div>
 
                 <div className="col-12">
                   <label className="form-label fw-semibold">
-                    Product Image {editId && "(Leave empty to keep current)"}
+                    Product Images (Max 5) {editId && "(Add new to keep existing)"}
                   </label>
                   <input
                     type="file"
                     className="form-control"
                     accept="image/*"
-                    onChange={(e) => {
-                      setForm({ ...form, image: e.target.files[0] });
-                      setEditImageChanged(true);
-                    }}
+                    multiple
+                    onChange={handleImageSelect}
                   />
+                  <small className="text-muted">You can select up to 5 images. All images must be real (no AI generated images allowed)</small>
                 </div>
 
-                {(form.image && typeof form.image !== "string") && (
+                {/* Existing Images Preview (Edit Mode) */}
+                {editId && existingImages.length > 0 && !editImageChanged && (
                   <div className="col-12">
-                    <div className="mt-2">
-                      <img
-                        src={URL.createObjectURL(form.image)}
-                        alt="Preview"
-                        style={{
-                          width: "120px",
-                          height: "120px",
-                          objectFit: "cover",
-                          borderRadius: "8px",
-                        }}
-                      />
+                    <label className="fw-semibold">Current Images (Click to zoom):</label>
+                    <div className="d-flex gap-2 mt-2 flex-wrap">
+                      {existingImages.map((img, idx) => (
+                        <div key={idx} className="position-relative">
+                          <img
+                            src={`http://localhost:5000/${img}`}
+                            alt={`Product ${idx + 1}`}
+                            style={{
+                              width: "80px",
+                              height: "80px",
+                              objectFit: "cover",
+                              borderRadius: "8px",
+                              border: "1px solid #ddd",
+                              cursor: "pointer"
+                            }}
+                            onClick={() => handleImageZoom(`http://localhost:5000/${img}`)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* New Images Preview */}
+                {imagePreviews.length > 0 && (
+                  <div className="col-12">
+                    <label className="fw-semibold">New Images:</label>
+                    <div className="d-flex gap-2 mt-2 flex-wrap">
+                      {imagePreviews.map((preview, idx) => (
+                        <div key={idx} className="position-relative">
+                          <img
+                            src={preview}
+                            alt={`Preview ${idx + 1}`}
+                            style={{
+                              width: "80px",
+                              height: "80px",
+                              objectFit: "cover",
+                              borderRadius: "8px",
+                              border: "2px solid #0d6efd",
+                              cursor: "pointer"
+                            }}
+                            onClick={() => handleImageZoom(preview)}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm position-absolute top-0 end-0 rounded-circle"
+                            style={{ transform: "translate(50%, -50%)" }}
+                            onClick={() => removeImage(idx)}
+                          >
+                            <i className="bi bi-x"></i>
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -754,18 +815,59 @@ function BusinessProfile() {
               <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
                 Cancel
               </button>
-
               <button
                 type="button"
                 className="btn btn-primary"
                 onClick={handleSave}
+                disabled={uploading}
               >
-                Save Product
+                {uploading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Product"
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Image Zoom Modal */}
+      {showZoomModal && zoomImage && (
+        <div 
+          className="modal fade show d-block" 
+          style={{ backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 9999 }}
+          onClick={() => setShowZoomModal(false)}
+        >
+          <div className="modal-dialog modal-xl modal-dialog-centered">
+            <div className="modal-content bg-transparent border-0">
+              <div className="modal-body text-center p-0">
+                <button 
+                  className="btn btn-light position-absolute top-0 end-0 m-3 rounded-circle"
+                  style={{ zIndex: 1 }}
+                  onClick={() => setShowZoomModal(false)}
+                >
+                  <i className="bi bi-x-lg"></i>
+                </button>
+                <img
+                  src={zoomImage}
+                  alt="Zoomed product"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '90vh',
+                    objectFit: 'contain',
+                    borderRadius: '8px'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <UserFooter />
     </>
