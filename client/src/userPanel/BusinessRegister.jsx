@@ -12,7 +12,7 @@ function BusinessRegister() {
     whatsapp: "",
     yearEstablished: "",
     factoryAddress: "",
-    ntnNumber: "",
+    memberId: "",
     category: "",
     products: "",
     website: "",
@@ -24,7 +24,7 @@ function BusinessRegister() {
     pinterest: "",
   });
 
-  // ✅ FILE STATES
+  // FILE STATES
   const [chamberFile, setChamberFile] = useState(null);
   const [cnicFrontFile, setCnicFrontFile] = useState(null);
   const [cnicBackFile, setCnicBackFile] = useState(null);
@@ -34,7 +34,6 @@ function BusinessRegister() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ SUBMIT FUNCTION (FIXED)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -118,7 +117,7 @@ function BusinessRegister() {
 
                     <div className="col-md-6">
                       <label className="form-label">Business Email *</label>
-                      <small className="text-muted">We will use this to contact you about your business</small>
+                      <small className="text-muted d-block">We will use this to contact you about your business</small>
                       <input type="email" name="email" className="form-control" required onChange={handleChange}/>
                     </div>
 
@@ -147,9 +146,9 @@ function BusinessRegister() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label">MemberID * </label>
-                      <small className="text-muted">Enter your Chamber of Commerce MemberID</small>
-                      <input type="text" name="ntnNumber" className="form-control" required onChange={handleChange}/>
+                      <label className="form-label">Chamber Member ID *</label>
+                      <small className="text-muted d-block">Enter your Chamber of Commerce Member ID</small>
+                      <input type="text" name="memberId" className="form-control" required onChange={handleChange} placeholder="e.g., C-001"/>
                     </div>
 
                     <div className="col-md-6">
@@ -218,7 +217,7 @@ function BusinessRegister() {
                   <div className="form-section-title mt-4">Additional Details</div>
                   <div className="row g-3">
                     <div className="col-12">
-                      <textarea name="description" rows="4" className="form-control" onChange={handleChange}></textarea>
+                      <textarea name="description" rows="4" className="form-control" placeholder="Describe your business..." onChange={handleChange}></textarea>
                     </div>
 
                     <div className="col-md-6">
@@ -226,7 +225,7 @@ function BusinessRegister() {
                     </div>
 
                     <div className="col-md-6">
-                      <label>Company Logo</label>
+                      <label className="form-label">Company Logo</label>
                       <input type="file" className="form-control"
                         onChange={(e) => setLogoFile(e.target.files[0])}/>
                     </div>

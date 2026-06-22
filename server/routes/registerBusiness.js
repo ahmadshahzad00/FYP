@@ -128,4 +128,58 @@ router.put("/:id/status", protect, async (req, res) => {
   }
 });
 
+/* ================= PUBLIC: GET BUSINESS BY ID ================= */
+
+router.get("/business/:id", async (req, res) => {
+  try {
+    const business = await Business.findById(req.params.id);
+    
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: "Business not found",
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      business,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+/* ================= PUBLIC: GET BUSINESS BY MEMBER ID ================= */
+
+router.get("/business-by-member/:memberId", async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    
+    const business = await Business.findOne({ memberId });
+    
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: "Business not found with this Member ID",
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      business,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
 export default router;

@@ -60,8 +60,8 @@ function App() {
         />
         <Route path="/business-profile" element={<BusinessProfile />} />
         <Route path="/FAQs" element={<FAQs />} />
-        <Route path="/publicBusinessProfile" element={<PublicBusinessProfile />} />
         <Route path="/sendInquiry" element={<SendInquiry />} />
+        <Route path="/publicBusinessProfile/:id" element={<PublicBusinessProfile />} />
         <Route path="/picTest" element={<PicTest />} />
         <Route path="/forgot-password" element={<ForgetPassword />} />
         <Route path="/reset-password/:token" element={<NewPassword />} />

@@ -63,6 +63,8 @@ function BusinessRequests() {
           return request.email?.toLowerCase().includes(searchLower);
         case "phone":
           return request.phone?.toLowerCase().includes(searchLower);
+        case "memberId":
+          return request.memberId?.toLowerCase().includes(searchLower);
         case "status":
           return request.status?.toLowerCase().includes(searchLower);
         default:
@@ -199,6 +201,7 @@ function BusinessRequests() {
                   <option value="category">Category</option>
                   <option value="email">Email</option>
                   <option value="phone">Phone</option>
+                  <option value="memberId">Member ID</option>
                   <option value="status">Status</option>
                 </select>
               </div>
@@ -228,14 +231,6 @@ function BusinessRequests() {
                   )}
                 </div>
               </div>
-              {/* <div className="col-md-2">
-                <button 
-                  className="btn btn-primary w-100" 
-                  onClick={fetchRequests}
-                >
-                  <i className="bi bi-arrow-repeat"></i> Refresh
-                </button>
-              </div> */}
             </div>
             
             {/* Search Results Info */}
@@ -310,6 +305,7 @@ function BusinessRequests() {
                     <th>Category</th>
                     <th>Email</th>
                     <th>Phone</th>
+                    <th>Member ID</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -322,6 +318,11 @@ function BusinessRequests() {
                       <td>{r.category}</td>
                       <td>{r.email}</td>
                       <td>{r.phone}</td>
+                      <td>
+                        <span className="badge bg-info text-dark">
+                          {r.memberId || "N/A"}
+                        </span>
+                      </td>
                       <td>
                         <span className={`badge ${getStatusBadgeClass(r.status)}`}>
                           {r.status}
@@ -405,7 +406,7 @@ function BusinessRequests() {
               {/* BODY */}
               <div className="modal-body">
 
-                {/* ✅ LOGO */}
+                {/* LOGO */}
                 {selected.logo && (
                   <div className="text-center mb-3">
                     <img
@@ -451,8 +452,12 @@ function BusinessRequests() {
                   </div>
 
                   <div className="col-md-6">
-                    <strong>NTN</strong>
-                    <p>{selected.ntnNumber}</p>
+                    <strong>Member ID</strong>
+                    <p>
+                      <span className="badge bg-info text-dark">
+                        {selected.memberId || "N/A"}
+                      </span>
+                    </p>
                   </div>
 
                   <div className="col-12">

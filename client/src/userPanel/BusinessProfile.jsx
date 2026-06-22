@@ -629,7 +629,7 @@ function BusinessProfile() {
                 <hr />
 
                 <p><strong>Category:</strong> {businessInfo.category}</p>
-                {businessInfo.ntnNumber && <p><strong>MemberID:</strong> {businessInfo.ntnNumber}</p>}
+                {businessInfo.memberId && <p><strong>MemberID:</strong> {businessInfo.memberId}</p>}
               </div>
             </div>
           </div>

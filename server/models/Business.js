@@ -15,8 +15,7 @@ const businessSchema = new mongoose.Schema(
     whatsapp: { type: String, required: true },
     yearEstablished: { type: Number, required: true },
     factoryAddress: { type: String, required: true },
-    ntnNumber: { type: String, required: true },
-
+    memberId: { type: String, required: true },
     category: { type: String, required: true },
     products: { type: String, required: true },
 
