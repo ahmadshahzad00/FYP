@@ -24,7 +24,7 @@ app.use("/api/auth", authUser);
 app.use("/api/auth/admin", authAdmin);
 app.use("/api/business", registerBusinessRoute);
 app.use("/api/file", fileCheckRoutes);
-app.use("/api/product", uploadProduct); // This mounts your product routes under /api/product
+app.use("/api/product", uploadProduct);
 
 connectDB();
 

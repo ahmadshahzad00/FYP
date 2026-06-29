@@ -34,7 +34,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import PicTest from './userPanel/PicTest';
 import NewPassword from './userPanel/NewPassword';
 import ForgetPassword from './userPanel/ForgetPassword';
-
+import CategoriesPage from "./userPanel/CategoriesPage";
 
 function App() {
   return (
@@ -65,6 +65,8 @@ function App() {
         <Route path="/picTest" element={<PicTest />} />
         <Route path="/forgot-password" element={<ForgetPassword />} />
         <Route path="/reset-password/:token" element={<NewPassword />} />
+        <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/products" element={<CategoriesPage />} />
 
         {/* ================= ADMIN ROUTES ================= */}
         <Route path="/admin-login" element={<AdminSignin />} />

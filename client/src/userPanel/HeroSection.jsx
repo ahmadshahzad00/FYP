@@ -276,7 +276,7 @@ function HeroSection() {
                 </p>
                 <button 
                   className="btn btn-outline-primary mt-auto"
-                  onClick={() => window.location.href = "/products?category=football"}
+                  onClick={() => window.location.href = "/products?category=sports"}
                 >
                   Explore Businesses
                   <i className="bi bi-arrow-right ms-2"></i>
@@ -308,15 +308,15 @@ function HeroSection() {
             <div className="col-md-4">
               <div className="card h-100 shadow-sm border-0 text-center p-4 product-type-card" style={{ transition: "transform 0.3s ease" }}>
                 <div className="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: "80px", height: "80px" }}>
-                  <i className="bi bi-handbag display-4 text-success"></i>
+                  <i className="bi bi-hospital display-4 text-success"></i>
                 </div>
-                <h5 className="fw-bold">Sports Gloves</h5>
+                <h5 className="fw-bold">Surgical Instruments</h5>
                 <p className="text-muted">
-                  High-quality boxing, fitness, and industrial gloves.
+                  Precision surgical instruments and medical equipment for global healthcare.
                 </p>
                 <button 
                   className="btn btn-outline-success mt-auto"
-                  onClick={() => window.location.href = "/products?category=gloves"}
+                  onClick={() => window.location.href = "/products?category=surgical"}
                 >
                   Explore Businesses
                   <i className="bi bi-arrow-right ms-2"></i>

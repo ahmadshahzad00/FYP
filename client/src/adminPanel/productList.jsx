@@ -15,6 +15,7 @@ function ProductList() {
   const [searchField, setSearchField] = useState('name');
   const [zoomImage, setZoomImage] = useState(null);
   const [showZoomModal, setShowZoomModal] = useState(false);
+  const [sortByRating, setSortByRating] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -22,7 +23,7 @@ function ProductList() {
 
   useEffect(() => {
     filterProducts();
-  }, [searchTerm, searchField, products]);
+  }, [searchTerm, searchField, products, sortByRating]);
 
   const fetchProducts = async () => {
     try {
@@ -32,8 +33,12 @@ function ProductList() {
       const response = await axios.get(`${API_BASE_URL}/products-with-business`);
       
       if (response.data.success) {
-        setProducts(response.data.products);
-        setFilteredProducts(response.data.products);
+        let productData = response.data.products;
+        if (sortByRating) {
+          productData = [...productData].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+        }
+        setProducts(productData);
+        setFilteredProducts(productData);
       } else {
         setError(response.data.message || 'Failed to fetch products');
       }
@@ -53,27 +58,32 @@ function ProductList() {
   };
 
   const filterProducts = () => {
-    if (!searchTerm.trim()) {
-      setFilteredProducts(products);
-      return;
+    let filtered = [...products];
+
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      
+      filtered = filtered.filter(product => {
+        switch(searchField) {
+          case 'name':
+            return product.name?.toLowerCase().includes(searchLower);
+          case 'productCode':
+            return product.productCode?.toLowerCase().includes(searchLower);
+          case 'business':
+            return product.businessDetails?.businessName?.toLowerCase().includes(searchLower);
+          case 'owner':
+            return product.businessDetails?.ownerName?.toLowerCase().includes(searchLower);
+          case 'category':
+            return product.category?.toLowerCase().includes(searchLower);
+          default:
+            return product.name?.toLowerCase().includes(searchLower);
+        }
+      });
     }
 
-    const searchLower = searchTerm.toLowerCase();
-    
-    const filtered = products.filter(product => {
-      switch(searchField) {
-        case 'name':
-          return product.name?.toLowerCase().includes(searchLower);
-        case 'business':
-          return product.businessDetails?.businessName?.toLowerCase().includes(searchLower);
-        case 'owner':
-          return product.businessDetails?.ownerName?.toLowerCase().includes(searchLower);
-        case 'category':
-          return product.category?.toLowerCase().includes(searchLower);
-        default:
-          return product.name?.toLowerCase().includes(searchLower);
-      }
-    });
+    if (sortByRating) {
+      filtered.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+    }
     
     setFilteredProducts(filtered);
   };
@@ -92,16 +102,45 @@ function ProductList() {
     setFilteredProducts(products);
   };
 
+  const handleSortByRating = () => {
+    setSortByRating(!sortByRating);
+  };
+
   const handleImageZoom = (imageUrl) => {
     setZoomImage(imageUrl);
     setShowZoomModal(true);
   };
 
-  const handleView = (id) => {
-    const product = filteredProducts.find((p) => p._id === id);
-    if (product) {
-      setSelectedProduct(product);
-      setShowModal(true);
+  const handleView = async (id) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/product-ratings/${id}`);
+      
+      if (response.data.success) {
+        const product = filteredProducts.find((p) => p._id === id);
+        if (product) {
+          setSelectedProduct({
+            ...product,
+            ratings: response.data.ratings || [],
+            averageRating: response.data.averageRating || 0,
+            totalRatings: response.data.totalRatings || 0,
+            productCode: response.data.productCode || product.productCode,
+          });
+          setShowModal(true);
+        }
+      } else {
+        const product = filteredProducts.find((p) => p._id === id);
+        if (product) {
+          setSelectedProduct(product);
+          setShowModal(true);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching product ratings:', err);
+      const product = filteredProducts.find((p) => p._id === id);
+      if (product) {
+        setSelectedProduct(product);
+        setShowModal(true);
+      }
     }
   };
 
@@ -126,6 +165,51 @@ function ProductList() {
         alert(err.response?.data?.message || 'Failed to delete product');
       }
     }
+  };
+
+  const renderStars = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating || 0);
+    const hasHalfStar = (rating || 0) - fullStars >= 0.5;
+
+    for (let i = 1; i <= 5; i++) {
+      if (i <= fullStars) {
+        stars.push(<i key={i} className="bi bi-star-fill text-warning" style={{ fontSize: '14px' }}></i>);
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        stars.push(<i key={i} className="bi bi-star-half text-warning" style={{ fontSize: '14px' }}></i>);
+      } else {
+        stars.push(<i key={i} className="bi bi-star text-secondary" style={{ fontSize: '14px' }}></i>);
+      }
+    }
+    return stars;
+  };
+
+  const renderLargeStars = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating || 0);
+    const hasHalfStar = (rating || 0) - fullStars >= 0.5;
+
+    for (let i = 1; i <= 5; i++) {
+      if (i <= fullStars) {
+        stars.push(<i key={i} className="bi bi-star-fill text-warning" style={{ fontSize: '20px' }}></i>);
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        stars.push(<i key={i} className="bi bi-star-half text-warning" style={{ fontSize: '20px' }}></i>);
+      } else {
+        stars.push(<i key={i} className="bi bi-star text-secondary" style={{ fontSize: '20px' }}></i>);
+      }
+    }
+    return stars;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
@@ -172,9 +256,26 @@ function ProductList() {
       <AdminSidebar />
       <div className="flex-grow-1 p-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 className="mb-0">Product List</h2>
-          <div className="text-muted">
-            Total: {filteredProducts.length} products
+          <div>
+            <h2 className="mb-0">Product List</h2>
+            <div className="text-muted mt-1">
+              Total: {filteredProducts.length} products
+            </div>
+          </div>
+          <div className="d-flex gap-2">
+            <button 
+              className={`btn ${sortByRating ? 'btn-warning' : 'btn-outline-secondary'} btn-sm`}
+              onClick={handleSortByRating}
+            >
+              <i className="bi bi-star me-1"></i>
+              {sortByRating ? 'Sorting by Rating' : 'Sort by Rating'}
+            </button>
+            <button 
+              className="btn btn-outline-primary btn-sm" 
+              onClick={fetchProducts}
+            >
+              <i className="bi bi-arrow-repeat me-1"></i> Refresh
+            </button>
           </div>
         </div>
 
@@ -192,6 +293,7 @@ function ProductList() {
                   onChange={handleSearchFieldChange}
                 >
                   <option value="name">Product Name</option>
+                  <option value="productCode">Product Code</option>
                   <option value="business">Business Name</option>
                   <option value="owner">Owner Name</option>
                   <option value="category">Category</option>
@@ -225,7 +327,6 @@ function ProductList() {
               </div>
             </div>
             
-            {/* Search Results Info */}
             {searchTerm && (
               <div className="mt-3 pt-2 border-top">
                 <div className="d-flex justify-content-between align-items-center">
@@ -246,12 +347,13 @@ function ProductList() {
           <table className="table table-striped table-hover mb-0">
             <thead className="table-dark">
               <tr>
-                <th>ID</th>
+                <th>Product Code</th>
                 <th>Images</th>
                 <th>Product</th>
                 <th>Category</th>
                 <th>Price</th>
-                <th>Status</th>
+                <th>Rating</th>
+                <th>Reviews</th>
                 <th>Stock</th>
                 <th>Business</th>
                 <th>Owner</th>
@@ -261,10 +363,17 @@ function ProductList() {
             <tbody>
               {filteredProducts.map(product => {
                 const productImages = product.images || (product.image ? [product.image] : []);
+                const avgRating = product.averageRating || 0;
+                const totalRatings = product.totalRatings || 0;
                 
                 return (
                   <tr key={product._id}>
-                    <td>{product._id?.slice(-6)}</td>
+                    <td>
+                      <span className="badge bg-primary" style={{ fontSize: '12px' }}>
+                        <i className="bi bi-tag me-1"></i>
+                        {product.productCode || 'N/A'}
+                      </span>
+                    </td>
                     <td>
                       <div className="d-flex gap-1">
                         {productImages.slice(0, 3).map((img, idx) => (
@@ -313,8 +422,16 @@ function ProductList() {
                         : product.price || 'N/A'}
                     </td>
                     <td>
-                      <span className={`badge ${product.availableQuantity > 0 ? 'bg-success' : 'bg-secondary'}`}>
-                        {product.availableQuantity > 0 ? 'Active' : 'Inactive'}
+                      <div className="d-flex align-items-center gap-1">
+                        {renderStars(avgRating)}
+                        <span className="fw-bold ms-1" style={{ fontSize: '13px' }}>
+                          {avgRating.toFixed(1)}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="badge bg-info text-dark">
+                        {totalRatings}
                       </span>
                     </td>
                     <td>{product.availableQuantity || 0}</td>
@@ -345,7 +462,7 @@ function ProductList() {
               })}
               {filteredProducts.length === 0 && (
                 <tr>
-                  <td colSpan="10" className="text-center py-4">
+                  <td colSpan="11" className="text-center py-4">
                     {searchTerm ? (
                       <div>
                         <i className="bi bi-search fs-1 text-muted"></i>
@@ -373,10 +490,10 @@ function ProductList() {
         </div>
       </div>
 
-      {/* Product Details Modal */}
+      {/* Product Details Modal with All Reviews */}
       {showModal && selectedProduct && (
         <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
-          <div className="modal-dialog modal-lg modal-dialog-centered">
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Product Details</h5>
@@ -385,6 +502,14 @@ function ProductList() {
               <div className="modal-body">
                 <div className="row">
                   <div className="col-md-4 text-center">
+                    {/* Product Code Badge */}
+                    <div className="mb-2">
+                      <span className="badge bg-primary" style={{ fontSize: '14px' }}>
+                        <i className="bi bi-tag me-1"></i>
+                        {selectedProduct.productCode || 'N/A'}
+                      </span>
+                    </div>
+
                     {/* Display multiple images in modal */}
                     <div className="d-flex flex-wrap gap-2 justify-content-center mb-3">
                       {(selectedProduct.images || [selectedProduct.image]).slice(0, 4).map((img, idx) => (
@@ -407,6 +532,20 @@ function ProductList() {
                         />
                       ))}
                     </div>
+
+                    {/* Rating Display */}
+                    <div className="mb-2">
+                      <div className="d-flex justify-content-center align-items-center gap-2">
+                        <span className="fw-bold fs-5">
+                          {selectedProduct.averageRating?.toFixed(1) || '0.0'}
+                        </span>
+                        {renderLargeStars(selectedProduct.averageRating || 0)}
+                      </div>
+                      <small className="text-muted">
+                        {selectedProduct.totalRatings || 0} reviews
+                      </small>
+                    </div>
+
                     <span className={`badge ${selectedProduct.availableQuantity > 0 ? 'bg-success' : 'bg-secondary'} fs-6`}>
                       {selectedProduct.availableQuantity > 0 ? 'Active' : 'Inactive'}
                     </span>
@@ -415,6 +554,13 @@ function ProductList() {
                     <h4 className="mb-2">{selectedProduct.name}</h4>
                     <p className="text-muted mb-3">{selectedProduct.description || 'No description available'}</p>
                     <dl className="row">
+                      <dt className="col-4">Product Code</dt>
+                      <dd className="col-8">
+                        <span className="badge bg-primary">
+                          {selectedProduct.productCode || 'N/A'}
+                        </span>
+                      </dd>
+                      
                       <dt className="col-4">Business</dt>
                       <dd className="col-8">
                         <strong>{selectedProduct.businessDetails?.businessName || 'N/A'}</strong>
@@ -453,6 +599,50 @@ function ProductList() {
                       </dd>
                     </dl>
                   </div>
+                </div>
+
+                {/* Reviews Section */}
+                <div className="mt-4 pt-3 border-top">
+                  <h5 className="fw-bold mb-3">
+                    <i className="bi bi-chat-dots me-2"></i>
+                    All Reviews ({selectedProduct.ratings?.length || 0})
+                  </h5>
+                  
+                  {selectedProduct.ratings && selectedProduct.ratings.length > 0 ? (
+                    <div className="reviews-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                      {selectedProduct.ratings.map((review, index) => (
+                        <div key={index} className="card mb-2 border-0 bg-light">
+                          <div className="card-body p-3">
+                            <div className="d-flex justify-content-between align-items-start">
+                              <div>
+                                <div className="d-flex align-items-center gap-2">
+                                  <strong>{review.userId?.name || 'Anonymous User'}</strong>
+                                  <span className="badge bg-primary">Rating: {review.rating}/5</span>
+                                </div>
+                                <div className="mt-1">
+                                  {renderStars(review.rating || 0)}
+                                </div>
+                              </div>
+                              <small className="text-muted">
+                                {formatDate(review.createdAt)}
+                              </small>
+                            </div>
+                            {review.review && (
+                              <p className="mb-0 mt-2 text-muted">{review.review}</p>
+                            )}
+                            {!review.review && (
+                              <p className="mb-0 mt-2 text-muted fst-italic">No review text provided</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="bi bi-chat fs-1 text-muted"></i>
+                      <p className="text-muted mt-2">No reviews yet for this product</p>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">

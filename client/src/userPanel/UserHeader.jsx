@@ -6,6 +6,8 @@ import logoImage from "../assets/logo.png";
 function UserHeader() {
   const [user, setUser] = useState(null);
   const [hasBusiness, setHasBusiness] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -15,7 +17,41 @@ function UserHeader() {
       setUser(JSON.parse(storedUser));
       checkBusiness(token);
     }
+
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const response = await axios.get(
+        "http://localhost:5000/api/product/public-products"
+      );
+      
+      if (response.data.success) {
+        // Extract unique categories
+        const uniqueCategories = [...new Set(
+          response.data.products
+            .filter(p => p.category)
+            .map(p => p.category)
+        )];
+        setCategories(uniqueCategories);
+      }
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+      // Fallback categories
+      setCategories([
+        "Sports Goods",
+        "Leather Products",
+        "Surgical Instruments",
+        "Textile & Apparel",
+        "Kids Toys",
+        "Safety Equipment"
+      ]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
 
   const checkBusiness = async (token) => {
     try {
@@ -81,10 +117,58 @@ function UserHeader() {
               </Link>
             </li>
 
-            <li className="nav-item">
-              <Link className="nav-link fw-semibold" to="/categories">
+            {/* Categories Dropdown - Hover */}
+            <li className="nav-item dropdown category-dropdown">
+              <Link
+                className="nav-link dropdown-toggle fw-semibold"
+                to="#"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
                 Categories
               </Link>
+              <ul className="dropdown-menu dropdown-menu-end shadow-lg category-menu">
+                <li>
+                  <Link className="dropdown-item fw-bold text-primary" to="/categories">
+                    <i className="bi bi-grid-3x3-gap-fill me-2"></i>
+                    All Categories
+                  </Link>
+                </li>
+                <li><hr className="dropdown-divider" /></li>
+                {loadingCategories ? (
+                  <li className="text-center py-2">
+                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <p className="text-muted small mt-1">Loading categories...</p>
+                  </li>
+                ) : categories.length > 0 ? (
+                  categories.map((category, index) => (
+                    <li key={index}>
+                      <Link
+                        className="dropdown-item category-item"
+                        to={`/products?category=${encodeURIComponent(category)}`}
+                      >
+                        <i className="bi bi-tag me-2 text-secondary"></i>
+                        {category}
+                      </Link>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-center py-2 text-muted">
+                    <i className="bi bi-box fs-5"></i>
+                    <p className="small mb-0">No categories available</p>
+                  </li>
+                )}
+                <li><hr className="dropdown-divider" /></li>
+                <li>
+                  <Link className="dropdown-item text-primary" to="/categories">
+                    <i className="bi bi-arrow-right me-2"></i>
+                    View All Categories
+                  </Link>
+                </li>
+              </ul>
             </li>
 
             {/* More */}
@@ -96,7 +180,7 @@ function UserHeader() {
               >
                 More
               </span>
-              <ul className="dropdown-menu">
+              <ul className="dropdown-menu dropdown-menu-end shadow">
                 <li><Link className="dropdown-item" to="/aboutus">About Us</Link></li>
                 <li><Link className="dropdown-item" to="/contactus">Contact Us</Link></li>
                 <li><Link className="dropdown-item" to="/FAQs">FAQ</Link></li>
@@ -141,7 +225,7 @@ function UserHeader() {
                       </Link>
                     </li>
 
-                    {/* ✅ BUSINESS SECTION */}
+                    {/* BUSINESS SECTION */}
                     {hasBusiness && (
                       <>
                         <li><hr className="dropdown-divider" /></li>
@@ -178,6 +262,81 @@ function UserHeader() {
           </ul>
         </div>
       </div>
+
+      {/* CSS for hover effect */}
+      <style jsx="true">{`
+        .category-dropdown:hover .category-menu {
+          display: block;
+        }
+        
+        .category-dropdown .dropdown-menu {
+          display: none;
+          min-width: 220px;
+          max-height: 400px;
+          overflow-y: auto;
+          animation: slideDown 0.3s ease;
+        }
+        
+        .category-dropdown:hover .dropdown-menu {
+          display: block;
+        }
+        
+        .category-item:hover {
+          background-color: #f0f7ff;
+          padding-left: 20px !important;
+          transition: all 0.2s ease;
+        }
+        
+        .category-item {
+          transition: all 0.2s ease;
+        }
+        
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        /* Custom scrollbar for categories */
+        .category-menu::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .category-menu::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+        
+        .category-menu::-webkit-scrollbar-thumb {
+          background: #0d6efd;
+          border-radius: 10px;
+        }
+        
+        .category-menu::-webkit-scrollbar-thumb:hover {
+          background: #0b5ed7;
+        }
+        
+        /* For mobile - click to open */
+        @media (max-width: 991.98px) {
+          .category-dropdown .dropdown-menu {
+            display: none;
+          }
+          .category-dropdown.show .dropdown-menu {
+            display: block;
+          }
+          .category-dropdown:hover .dropdown-menu {
+            display: none;
+          }
+          .category-dropdown.show:hover .dropdown-menu {
+            display: block;
+          }
+        }
+      `}</style>
     </nav>
   );
 }

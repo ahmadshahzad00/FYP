@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import axios from "axios";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
-import HeroSection from "./HeroSection";
 
-function Home() {
+function CategoriesPage() {
+  const location = useLocation();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sort, setSort] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -17,15 +19,19 @@ function Home() {
   const [userRating, setUserRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [submittingRating, setSubmittingRating] = useState(false);
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
 
   const currentUser = JSON.parse(localStorage.getItem("user"));
   const userId = currentUser?._id || null;
 
   useEffect(() => {
+    // Get category from URL query parameter
+    const params = new URLSearchParams(location.search);
+    const categoryParam = params.get("category");
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
     fetchProducts();
-  }, []);
+  }, [location.search]);
 
   const fetchProducts = async () => {
     try {
@@ -40,14 +46,18 @@ function Home() {
         setProducts(response.data.products);
         setFilteredProducts(response.data.products);
         
+        // Extract unique categories
         const uniqueCategories = [...new Set(
           response.data.products
             .filter(p => p.category)
             .map(p => p.category)
         )];
         setCategories(uniqueCategories);
+      } else {
+        setError(response.data.message || "Failed to fetch products");
       }
     } catch (err) {
+      console.error("Error fetching products:", err);
       setError(err.response?.data?.message || "Failed to load products");
     } finally {
       setLoading(false);
@@ -57,23 +67,25 @@ function Home() {
   useEffect(() => {
     let results = [...products];
 
+    // Filter by selected category
+    if (selectedCategory) {
+      results = results.filter(product => 
+        product.category?.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+
+    // Search filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
       results = results.filter(product => 
         product.name?.toLowerCase().includes(term) ||
         product.category?.toLowerCase().includes(term) ||
         product.description?.toLowerCase().includes(term) ||
-        product.productCode?.toLowerCase().includes(term) ||
         product.businessDetails?.companyName?.toLowerCase().includes(term)
       );
     }
 
-    if (selectedCategory) {
-      results = results.filter(product => 
-        product.category === selectedCategory
-      );
-    }
-
+    // Sorting
     if (sort === "low") {
       results.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
     } else if (sort === "high") {
@@ -81,7 +93,7 @@ function Home() {
     }
 
     setFilteredProducts(results);
-  }, [searchTerm, selectedCategory, sort, products]);
+  }, [selectedCategory, searchTerm, sort, products]);
 
   const handleViewProduct = (product) => {
     setSelectedProduct(product);
@@ -171,7 +183,6 @@ function Home() {
     return (
       <>
         <UserHeader />
-        <HeroSection />
         <div className="container my-5 text-center">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
@@ -187,7 +198,6 @@ function Home() {
     return (
       <>
         <UserHeader />
-        <HeroSection />
         <div className="container my-5">
           <div className="alert alert-danger text-center">
             <i className="bi bi-exclamation-triangle fs-1"></i>
@@ -206,11 +216,22 @@ function Home() {
   return (
     <>
       <UserHeader />
-      <HeroSection />
+
+      {/* Header */}
+      <section className="bg-primary text-light py-5">
+        <div className="container">
+          <h1 className="fw-bold mb-3">
+            {selectedCategory ? selectedCategory : "All Categories"}
+          </h1>
+          <p className="opacity-75 fs-5 mb-0">
+            {selectedCategory 
+              ? `Discover products in ${selectedCategory} category` 
+              : "Discover all products by category"}
+          </p>
+        </div>
+      </section>
 
       <div className="container my-5">
-        <h4 className="fw-bold mb-4">Featured Products</h4>
-
         {/* Search and Filter Bar */}
         <div className="card shadow-sm mb-4 border-0">
           <div className="card-body">
@@ -226,7 +247,7 @@ function Home() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Search by name, code, category..."
+                    placeholder="Search products..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -279,6 +300,8 @@ function Home() {
                     setSearchTerm("");
                     setSelectedCategory("");
                     setSort("");
+                    // Update URL without category parameter
+                    window.history.pushState({}, "", "/categories");
                   }}
                 >
                   <i className="bi bi-arrow-clockwise"></i> Reset
@@ -291,18 +314,22 @@ function Home() {
                 <div className="text-muted">
                   <i className="bi bi-info-circle"></i> 
                   Found <strong>{filteredProducts.length}</strong> products
+                  {selectedCategory && <span> in <strong>{selectedCategory}</strong></span>}
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Products Grid - 6 per row */}
+        {/* Products Grid */}
         {filteredProducts.length === 0 ? (
           <div className="text-center py-5">
             <i className="bi bi-box fs-1 text-muted"></i>
             <h5 className="mt-3 text-muted">No products found</h5>
             <p className="text-muted">Try adjusting your search or filters</p>
+            <Link to="/categories" className="btn btn-primary">
+              View All Categories
+            </Link>
           </div>
         ) : (
           <div className="row g-3">
@@ -311,7 +338,6 @@ function Home() {
                 <div className="card border-0 shadow-sm h-100 product-card">
                   <div className="card-body p-2">
 
-                    {/* Company - Smaller */}
                     <Link
                       to={`/publicBusinessProfile/${product.businessId?._id}`}
                       className="d-flex align-items-center mb-2 text-decoration-none text-dark"
@@ -338,7 +364,6 @@ function Home() {
                       </div>
                     </Link>
 
-                    {/* Product Image - Smaller */}
                     <div
                       className="mb-2 mx-auto bg-light rounded d-flex align-items-center justify-content-center"
                       style={{ width: "100%", height: "80px" }}
@@ -356,14 +381,6 @@ function Home() {
                       ) : (
                         <i className="bi bi-box-seam text-primary" style={{ fontSize: "24px" }}></i>
                       )}
-                    </div>
-
-                    {/* Product Code */}
-                    <div className="text-center mb-1">
-                      <span className="badge bg-primary" style={{ fontSize: "10px" }}>
-                        <i className="bi bi-tag me-1"></i>
-                        {product.productCode || "N/A"}
-                      </span>
                     </div>
 
                     <h6 className="fw-semibold mb-1 text-center text-truncate" style={{ fontSize: "13px" }}>
@@ -385,7 +402,7 @@ function Home() {
                       className="btn btn-outline-primary btn-sm w-100"
                       style={{ fontSize: "12px", padding: "4px 8px" }}
                       data-bs-toggle="modal"
-                      data-bs-target="#productModal"
+                      data-bs-target="#categoryProductModal"
                       onClick={() => handleViewProduct(product)}
                     >
                       View Details
@@ -398,10 +415,10 @@ function Home() {
         )}
       </div>
 
-      {/* Product Details Modal - Same as before */}
+      {/* Product Details Modal */}
       <div
         className="modal fade"
-        id="productModal"
+        id="categoryProductModal"
         tabIndex="-1"
         aria-hidden="true"
       >
@@ -422,14 +439,6 @@ function Home() {
             <div className="modal-body">
               <div className="row">
                 <div className="col-md-5 text-center">
-                  {/* Product Code */}
-                  <div className="mb-2">
-                    <span className="badge bg-primary" style={{ fontSize: "14px" }}>
-                      <i className="bi bi-tag me-1"></i>
-                      {selectedProduct?.productCode || "N/A"}
-                    </span>
-                  </div>
-
                   <div
                     className="bg-light rounded d-flex align-items-center justify-content-center mx-auto shadow-sm"
                     style={{ width: "100%", height: "200px" }}
@@ -449,7 +458,6 @@ function Home() {
                     )}
                   </div>
 
-                  {/* Product Images Gallery */}
                   {selectedProduct?.images && selectedProduct.images.length > 1 && (
                     <div className="mt-2 d-flex gap-2 justify-content-center flex-wrap">
                       {selectedProduct.images.slice(0, 4).map((img, index) => (
@@ -501,35 +509,27 @@ function Home() {
 
                   <div className="row mb-2">
                     <div className="col-6">
-                      <small className="text-muted">Product Code</small>
-                      <p className="mb-1 fw-semibold">
-                        <span className="badge bg-primary">
-                          {selectedProduct?.productCode || "N/A"}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="col-6">
                       <small className="text-muted">Category</small>
                       <p className="mb-1 fw-semibold">{selectedProduct?.category || "N/A"}</p>
                     </div>
-                  </div>
-
-                  <div className="row mb-2">
                     <div className="col-6">
                       <small className="text-muted">Method</small>
                       <p className="mb-1 fw-semibold">{selectedProduct?.method || "N/A"}</p>
                     </div>
-                    <div className="col-6">
-                      <small className="text-muted">Size</small>
-                      <p className="mb-1 fw-semibold">{selectedProduct?.size || "N/A"}</p>
-                    </div>
                   </div>
 
                   <div className="row mb-2">
                     <div className="col-6">
+                      <small className="text-muted">Size</small>
+                      <p className="mb-1 fw-semibold">{selectedProduct?.size || "N/A"}</p>
+                    </div>
+                    <div className="col-6">
                       <small className="text-muted">Colors</small>
                       <p className="mb-1 fw-semibold">{selectedProduct?.colors || "N/A"}</p>
                     </div>
+                  </div>
+
+                  <div className="row mb-2">
                     <div className="col-6">
                       <small className="text-muted">Available Quantity</small>
                       <p className="mb-1 fw-semibold">
@@ -538,9 +538,6 @@ function Home() {
                         </span>
                       </p>
                     </div>
-                  </div>
-
-                  <div className="row mb-2">
                     <div className="col-6">
                       <small className="text-muted">Company</small>
                       <p className="mb-1 fw-semibold">{selectedProduct?.businessDetails?.companyName || "N/A"}</p>
@@ -567,7 +564,6 @@ function Home() {
                     )}
                   </div>
 
-                  {/* Rating Section */}
                   {userId && (
                     <div className="mt-4 pt-3 border-top">
                       <h6 className="fw-bold">Rate this product</h6>
@@ -647,4 +643,4 @@ function Home() {
   );
 }
 
-export default Home;
+export default CategoriesPage;

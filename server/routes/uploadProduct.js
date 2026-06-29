@@ -30,7 +30,17 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage,
   limits: { files: 5 }
-}).array("images", 5);
+});
+
+// Helper function to generate 6 character alphanumeric code
+const generateProductCode = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
 
 // Helper function to check a single image for EXIF and AI
 const checkImage = async (filePath) => {
@@ -103,6 +113,7 @@ router.get("/public-products", async (req, res) => {
         { name: { $regex: search, $options: 'i' } },
         { category: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
+        { productCode: { $regex: search, $options: 'i' } },
       ];
     }
     
@@ -139,6 +150,7 @@ router.get("/public-products", async (req, res) => {
       products: formattedProducts,
     });
   } catch (error) {
+    console.error("Error in public-products:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -171,6 +183,41 @@ router.get("/public-product/:id", async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Error in public-product:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+// GET product by product code
+router.get("/product-by-code/:productCode", async (req, res) => {
+  try {
+    const { productCode } = req.params;
+    const product = await Product.findOne({ productCode })
+      .populate('businessId', 'companyName ownerName logo category status email phone whatsapp facebook instagram website')
+      .populate('ratings.userId', 'name email');
+    
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found with this code",
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      product: {
+        ...product.toObject(),
+        businessDetails: product.businessId,
+        averageRating: product.averageRating || 0,
+        totalRatings: product.totalRatings || 0,
+        images: product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : []),
+      },
+    });
+  } catch (error) {
+    console.error("Error in product-by-code:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -242,6 +289,7 @@ router.post("/rate-product/:id", async (req, res) => {
       totalRatings: product.totalRatings,
     });
   } catch (error) {
+    console.error("Error in rate-product:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -267,8 +315,10 @@ router.get("/product-ratings/:id", async (req, res) => {
       averageRating: product.averageRating || 0,
       totalRatings: product.totalRatings || 0,
       ratings: product.ratings || [],
+      productCode: product.productCode,
     });
   } catch (error) {
+    console.error("Error in product-ratings:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -290,6 +340,7 @@ router.get("/products/:businessId", async (req, res) => {
       products,
     });
   } catch (error) {
+    console.error("Error in products by business:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -314,6 +365,7 @@ router.get("/product/:id", async (req, res) => {
       product,
     });
   } catch (error) {
+    console.error("Error in product by ID:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -366,6 +418,7 @@ router.get("/products-with-business", async (req, res) => {
       products: productsWithBusiness
     });
   } catch (error) {
+    console.error("Error in products-with-business:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -373,10 +426,13 @@ router.get("/products-with-business", async (req, res) => {
   }
 });
 
+// ==================== UPLOAD PRODUCT ====================
+
 // POST create new product with multiple images
-router.post("/upload-product", (req, res) => {
-  upload(req, res, async (err) => {
+router.post("/upload-product", async (req, res) => {
+  upload.array("images", 5)(req, res, async function(err) {
     if (err) {
+      console.error("Multer error:", err);
       return res.status(400).json({
         success: false,
         message: err.message || "Error uploading files",
@@ -396,6 +452,7 @@ router.post("/upload-product", (req, res) => {
         availableQuantity,
       } = req.body;
 
+      // Validate required fields
       if (!businessId) {
         return res.status(400).json({
           success: false,
@@ -429,6 +486,7 @@ router.post("/upload-product", (req, res) => {
         });
       }
 
+      // Verify business exists
       const business = await Business.findById(businessId);
       if (!business) {
         req.files.forEach(file => {
@@ -442,6 +500,7 @@ router.post("/upload-product", (req, res) => {
         });
       }
 
+      // Check all images
       const failedImages = [];
       const validImagePaths = [];
 
@@ -468,7 +527,8 @@ router.post("/upload-product", (req, res) => {
         });
       }
 
-      const product = await Product.create({
+      // Create product - model will auto-generate productCode
+      const productData = {
         businessId,
         name,
         category: category || "",
@@ -483,14 +543,32 @@ router.post("/upload-product", (req, res) => {
         ratings: [],
         averageRating: 0,
         totalRatings: 0,
-      });
+      };
+
+      // Generate product code manually as fallback
+      let productCode = generateProductCode();
+      let codeExists = await Product.findOne({ productCode });
+      
+      while (codeExists) {
+        productCode = generateProductCode();
+        codeExists = await Product.findOne({ productCode });
+      }
+      
+      productData.productCode = productCode;
+
+      const product = new Product(productData);
+      await product.save();
 
       return res.status(201).json({
         success: true,
         message: "Product uploaded successfully",
         product,
+        productCode: product.productCode,
       });
     } catch (error) {
+      console.error("Error creating product:", error);
+      
+      // Clean up uploaded files
       if (req.files) {
         req.files.forEach(file => {
           if (fs.existsSync(file.path)) {
@@ -501,16 +579,17 @@ router.post("/upload-product", (req, res) => {
       
       return res.status(500).json({
         success: false,
-        message: error.message,
+        message: error.message || "Internal server error",
       });
     }
   });
 });
 
 // PUT update product with multiple images
-router.put("/update-product/:id", (req, res) => {
-  upload(req, res, async (err) => {
+router.put("/update-product/:id", async (req, res) => {
+  upload.array("images", 5)(req, res, async function(err) {
     if (err) {
+      console.error("Multer error:", err);
       return res.status(400).json({
         success: false,
         message: err.message || "Error uploading files",
@@ -628,6 +707,8 @@ router.put("/update-product/:id", (req, res) => {
         product: updatedProduct,
       });
     } catch (error) {
+      console.error("Error updating product:", error);
+      
       if (req.files) {
         req.files.forEach(file => {
           if (fs.existsSync(file.path)) {
@@ -672,6 +753,7 @@ router.delete("/delete-product/:id", async (req, res) => {
       message: "Product deleted successfully",
     });
   } catch (error) {
+    console.error("Error deleting product:", error);
     return res.status(500).json({
       success: false,
       message: error.message,

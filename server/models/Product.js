@@ -1,4 +1,3 @@
-// models/Product.js
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
@@ -19,11 +18,26 @@ const productSchema = new mongoose.Schema({
   method: String,
   availableQuantity: Number,
   images: [String],
-  mainImage: String,
+  image: String,
   status: {
     type: String,
     enum: ["Active", "Inactive"],
     default: "Active",
+  },
+  
+  // Product Code / SKU - 6 character alphanumeric
+  productCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    default: function() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    }
   },
   
   // Rating fields
@@ -64,6 +78,6 @@ const productSchema = new mongoose.Schema({
 });
 
 // Index for search
-productSchema.index({ name: 'text', description: 'text', category: 'text' });
+productSchema.index({ name: 'text', description: 'text', category: 'text', productCode: 'text' });
 
 export default mongoose.model("Product", productSchema);

@@ -665,12 +665,12 @@ function BusinessProfile() {
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
                   >
                     <option value="">Select Category</option>
-                    <option value="electronics">Sports Goods</option>
-                    <option value="clothing">Leather Products</option>
-                    <option value="books">Surgical Instruments</option>
-                    <option value="home">Textile & Apparel</option>
-                    <option value="home">Safety Equipment</option>
-                    <option value="home">Other</option>
+                    <option value="sports">Sports Goods</option>
+                    <option value="leather">Leather Products</option>
+                    <option value="surgical">Surgical Instruments</option>
+                    <option value="textile">Textile & Apparel</option>
+                    <option value="safety">Safety Equipment</option>
+                    <option value="other">Other</option>
                     {/* Add more options as needed */}
                   </select>
                 </div>

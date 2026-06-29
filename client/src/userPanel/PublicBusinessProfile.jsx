@@ -373,6 +373,14 @@ function PublicBusinessProfile() {
                           </div>
 
                           <div className="card-body">
+                            {/* Product Code */}
+                            <div className="mb-2">
+                              <span className="badge bg-primary" style={{ fontSize: "11px" }}>
+                                <i className="bi bi-tag me-1"></i>
+                                {p.productCode || "N/A"}
+                              </span>
+                            </div>
+
                             <h6 className="fw-bold">{p.name}</h6>
                             <p className="text-muted small mb-2">
                               {p.description || "No description available"}
@@ -401,6 +409,16 @@ function PublicBusinessProfile() {
                                 </li>
                               )}
                             </ul>
+
+                            {/* Rating Display */}
+                            <div className="mb-2">
+                              <div className="d-flex align-items-center gap-1">
+                                {renderStars(p.averageRating || 0)}
+                                <span className="text-muted small">
+                                  ({p.totalRatings || 0} reviews)
+                                </span>
+                              </div>
+                            </div>
 
                             <div className="d-flex justify-content-between align-items-center">
                               <span className="fw-bold text-success fs-5">
@@ -589,6 +607,14 @@ function PublicBusinessProfile() {
                     <i className="bi bi-x-lg"></i>
                   </button>
 
+                  {/* Product Code in Gallery */}
+                  <div className="position-absolute top-0 start-0 m-3 bg-dark bg-opacity-75 text-white px-3 py-2 rounded">
+                    <small>
+                      <i className="bi bi-tag me-1"></i>
+                      {selectedProduct.productCode || "N/A"}
+                    </small>
+                  </div>
+
                   {/* Main Image */}
                   <div className="d-flex align-items-center justify-content-center" style={{ minHeight: "70vh" }}>
                     <img
@@ -673,7 +699,7 @@ function PublicBusinessProfile() {
                   </div>
 
                   {/* Product Info Overlay */}
-                  <div className="position-absolute top-0 start-0 m-3 text-white">
+                  <div className="position-absolute top-0 start-0 m-3 text-white" style={{ marginTop: "60px" }}>
                     <h5 className="fw-bold mb-0">{selectedProduct.name}</h5>
                     <small className="opacity-75">{selectedProduct.category || "Product"}</small>
                   </div>
