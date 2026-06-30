@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import Business from "../models/Business.js";
-import { protect } from "../middleware/middleware.js";
+import { protect, protectAdmin } from "../middleware/middleware.js";
 
 const router = express.Router();
 
@@ -46,7 +46,6 @@ router.post("/", protect, uploadFields, async (req, res) => {
     const business = new Business({
       userId: req.user.id,
       ...req.body,
-
       chamberMembership: req.files.chamberMembership[0].path,
       cnicFront: req.files.cnicFront[0].path,
       cnicBack: req.files.cnicBack[0].path,
@@ -60,7 +59,7 @@ router.post("/", protect, uploadFields, async (req, res) => {
       business,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error submitting business:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
@@ -81,14 +80,14 @@ router.get("/my-business", protect, async (req, res) => {
 
     res.json(business);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching business:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
 
-/* ================= ADMIN: GET ALL ================= */
+/* ================= ADMIN: GET ALL BUSINESS REQUESTS ================= */
 
-router.get("/all", protect, async (req, res) => {
+router.get("/all", protectAdmin, async (req, res) => {
   try {
     const businesses = await Business.find()
       .populate("userId", "name email")
@@ -96,13 +95,14 @@ router.get("/all", protect, async (req, res) => {
 
     res.json(businesses);
   } catch (err) {
+    console.error("Error fetching businesses:", err);
     res.status(500).json({ msg: "Error fetching businesses" });
   }
 });
 
-/* ================= ADMIN STATUS UPDATE ================= */
+/* ================= ADMIN: UPDATE BUSINESS STATUS ================= */
 
-router.put("/:id/status", protect, async (req, res) => {
+router.put("/:id/status", protectAdmin, async (req, res) => {
   try {
     const { status } = req.body;
 
@@ -124,6 +124,7 @@ router.put("/:id/status", protect, async (req, res) => {
       business,
     });
   } catch (err) {
+    console.error("Error updating status:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });

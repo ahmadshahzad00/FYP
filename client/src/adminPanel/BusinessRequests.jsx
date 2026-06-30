@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import AdminSidebar from "./AdminSidebar";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 function BusinessRequests() {
   const [requests, setRequests] = useState([]);
@@ -17,19 +18,43 @@ function BusinessRequests() {
     try {
       setLoading(true);
       setError(null);
+      
+      const token = localStorage.getItem("adminToken");
+      
+      if (!token) {
+        setError("No authentication token found. Please login again.");
+        setLoading(false);
+        setTimeout(() => {
+          window.location.href = "/admin-login";
+        }, 2000);
+        return;
+      }
+      
       const res = await axios.get(
         "http://localhost:5000/api/business/all",
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
+      
       setRequests(res.data);
       setFilteredRequests(res.data);
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || "Failed to fetch business requests");
+      console.error("Error fetching requests:", err);
+      
+      if (err.response?.status === 401) {
+        const errorMsg = err.response?.data?.message || "Your session has expired. Please login again.";
+        setError(errorMsg);
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminData");
+        setTimeout(() => {
+          window.location.href = "/admin-login";
+        }, 3000);
+      } else {
+        setError(err.response?.data?.message || err.response?.data?.msg || "Failed to fetch business requests");
+      }
     } finally {
       setLoading(false);
     }
@@ -91,19 +116,36 @@ function BusinessRequests() {
 
   const handleAction = async (id, status) => {
     try {
+      const token = localStorage.getItem("adminToken");
+      
+      if (!token) {
+        alert("Please login again");
+        window.location.href = "/admin-login";
+        return;
+      }
+      
       await axios.put(
         `http://localhost:5000/api/business/${id}/status`,
         { status },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
+      
       fetchRequests();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Failed to update status");
+      
+      if (err.response?.status === 401) {
+        alert("Your session has expired. Please login again.");
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminData");
+        window.location.href = "/admin-login";
+      } else {
+        alert(err.response?.data?.message || err.response?.data?.msg || "Failed to update status");
+      }
     }
   };
 
@@ -149,15 +191,23 @@ function BusinessRequests() {
       <div className="d-flex min-vh-100 bg-light">
         <AdminSidebar />
         <div className="flex-grow-1 p-4 d-flex justify-content-center align-items-center">
-          <div className="text-center">
+          <div className="text-center" style={{ maxWidth: "500px" }}>
             <div className="alert alert-danger" role="alert">
               <i className="bi bi-exclamation-triangle fs-1"></i>
-              <h4 className="mt-2">Error</h4>
+              <h4 className="mt-2">Authentication Error</h4>
               <p>{error}</p>
               <button 
                 className="btn btn-primary mt-2" 
+                onClick={() => window.location.href = "/admin-login"}
+              >
+                <i className="bi bi-box-arrow-in-right me-2"></i>
+                Go to Login
+              </button>
+              <button 
+                className="btn btn-outline-secondary mt-2 ms-2" 
                 onClick={fetchRequests}
               >
+                <i className="bi bi-arrow-clockwise me-2"></i>
                 Try Again
               </button>
             </div>

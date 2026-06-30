@@ -10,6 +10,23 @@ function BusinessProfile() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState("name");
+  
+  // Inquiry states
+  const [inquiries, setInquiries] = useState([]);
+  const [inquiryStats, setInquiryStats] = useState({
+    total: 0,
+    pending: 0,
+    unread: 0,
+    replied: 0,
+    resolved: 0,
+  });
+  const [selectedInquiry, setSelectedInquiry] = useState(null);
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [replyMessage, setReplyMessage] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
+  const [inquiryLoading, setInquiryLoading] = useState(false);
+  
+  // Product form states
   const [form, setForm] = useState({
     images: [],
     name: "",
@@ -49,6 +66,7 @@ function BusinessProfile() {
       );
       setBusinessInfo(res.data);
       await fetchProducts(res.data._id);
+      await fetchInquiries(); // Fetch inquiries after business is loaded
     } catch (err) {
       console.error(err);
     } finally {
@@ -79,6 +97,159 @@ function BusinessProfile() {
     } catch (err) {
       console.error("Error fetching products:", err);
     }
+  };
+
+  // ============================================
+  // INQUIRY FUNCTIONS
+  // ============================================
+  const fetchInquiries = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:5000/api/inquiry/my-inquiries",
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      setInquiries(res.data.data);
+      setInquiryStats(res.data.stats);
+    } catch (err) {
+      console.error("Error fetching inquiries:", err);
+    }
+  };
+
+  const viewInquiry = async (id) => {
+    setInquiryLoading(true);
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/inquiry/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      setSelectedInquiry(res.data.data);
+      setShowInquiryModal(true);
+      setReplyMessage("");
+      
+      // Refresh inquiries list
+      await fetchInquiries();
+    } catch (err) {
+      console.error("Error fetching inquiry details:", err);
+      alert(err.response?.data?.message || "Failed to load inquiry details");
+    } finally {
+      setInquiryLoading(false);
+    }
+  };
+
+  const sendReply = async () => {
+    if (!replyMessage.trim()) {
+      alert("Please enter a reply message");
+      return;
+    }
+
+    setSendingReply(true);
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/inquiry/${selectedInquiry._id}/reply`,
+        { replyMessage },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      setSelectedInquiry(res.data.data);
+      setReplyMessage("");
+      await fetchInquiries();
+      alert("Reply sent successfully!");
+    } catch (err) {
+      console.error("Error sending reply:", err);
+      alert(err.response?.data?.message || "Failed to send reply");
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  const resolveInquiry = async (id) => {
+    if (!window.confirm("Mark this inquiry as resolved?")) return;
+
+    try {
+      await axios.put(
+        `http://localhost:5000/api/inquiry/${id}/resolve`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      await fetchInquiries();
+      if (selectedInquiry && selectedInquiry._id === id) {
+        setSelectedInquiry({ ...selectedInquiry, status: "resolved" });
+      }
+      alert("Inquiry marked as resolved!");
+    } catch (err) {
+      console.error("Error resolving inquiry:", err);
+      alert(err.response?.data?.message || "Failed to resolve inquiry");
+    }
+  };
+
+  const deleteInquiry = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this inquiry?")) return;
+
+    try {
+      await axios.delete(
+        `http://localhost:5000/api/inquiry/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      await fetchInquiries();
+      if (selectedInquiry && selectedInquiry._id === id) {
+        setShowInquiryModal(false);
+        setSelectedInquiry(null);
+      }
+      alert("Inquiry deleted successfully!");
+    } catch (err) {
+      console.error("Error deleting inquiry:", err);
+      alert(err.response?.data?.message || "Failed to delete inquiry");
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      pending: "bg-warning text-dark",
+      read: "bg-info text-dark",
+      replied: "bg-primary text-white",
+      resolved: "bg-success text-white",
+    };
+    return badges[status] || "bg-secondary";
+  };
+
+  const getInquiryTypeIcon = (type) => {
+    const icons = {
+      general: "💬",
+      price: "💰",
+      bulk_order: "📦",
+      customization: "🎨",
+      shipping: "🚚",
+      availability: "📊",
+      warranty: "🛡️",
+      specification: "🔧",
+      sample: "🧪",
+      other: "📝",
+    };
+    return icons[type] || "📩";
   };
 
   const filterProducts = () => {
@@ -138,7 +309,6 @@ function BusinessProfile() {
     setForm({ ...form, images: files });
     setEditImageChanged(true);
     
-    // Create previews
     const previews = files.map(file => URL.createObjectURL(file));
     setImagePreviews(previews);
   };
@@ -252,7 +422,6 @@ function BusinessProfile() {
         await fetchProducts(businessInfo._id);
       }
       
-      // Close modal
       const modal = document.getElementById("productModal");
       const bootstrapModal = window.bootstrap?.Modal?.getInstance(modal);
       if (bootstrapModal) {
@@ -263,7 +432,6 @@ function BusinessProfile() {
       }
       
     } catch (err) {
-      // Display detailed error message
       if (err.response?.data?.errors) {
         const errorMessages = err.response.data.errors.map(e => `${e.filename}: ${e.error}`).join('\n');
         alert(`Upload failed:\n${errorMessages}`);
@@ -348,30 +516,75 @@ function BusinessProfile() {
             )}
           </div>
 
-          <div className="ms-4">
-            <h3 className="fw-bold mb-1">{businessInfo.companyName}</h3>
-            <p className="text-muted mb-1">Business Owner Dashboard</p>
+          <div className="ms-4 flex-grow-1">
+            <div className="d-flex justify-content-between align-items-start flex-wrap">
+              <div>
+                <h3 className="fw-bold mb-1">{businessInfo.companyName}</h3>
+                <p className="text-muted mb-1">Business Owner Dashboard</p>
+                <span className="badge bg-primary">{businessInfo.factoryAddress}</span>
+                <span
+                  className={`badge ms-2 ${
+                    businessInfo.status === "approved"
+                      ? "bg-success"
+                      : businessInfo.status === "rejected"
+                      ? "bg-danger"
+                      : "bg-warning text-dark"
+                  }`}
+                >
+                  {businessInfo.status}
+                </span>
+              </div>
 
-            <span className="badge bg-primary">
-              {businessInfo.factoryAddress}
-            </span>
-
-            <div className="mt-2">
-              <span
-                className={`badge ${
-                  businessInfo.status === "approved"
-                    ? "bg-success"
-                    : businessInfo.status === "rejected"
-                    ? "bg-danger"
-                    : "bg-warning text-dark"
-                }`}
+              {/* INQUIRY BUTTON */}
+              <button
+                className="btn btn-primary position-relative"
+                onClick={() => fetchInquiries()}
+                data-bs-toggle="modal"
+                data-bs-target="#inquiryModal"
               >
-                {businessInfo.status}
-              </span>
+                <i className="bi bi-envelope me-2"></i>
+                Inquiries
+                {inquiryStats.pending > 0 && (
+                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    {inquiryStats.pending}
+                    <span className="visually-hidden">new inquiries</span>
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </div>
       </section>
+
+      {/* INQUIRY STATS BANNER */}
+      <div className="container mt-3">
+        <div className="row g-2">
+          <div className="col-md-3 col-6">
+            <div className="card bg-primary text-white text-center p-2">
+              <small>Total</small>
+              <h5 className="mb-0">{inquiryStats.total}</h5>
+            </div>
+          </div>
+          <div className="col-md-3 col-6">
+            <div className="card bg-warning text-dark text-center p-2">
+              <small>Pending</small>
+              <h5 className="mb-0">{inquiryStats.pending}</h5>
+            </div>
+          </div>
+          <div className="col-md-3 col-6">
+            <div className="card bg-info text-dark text-center p-2">
+              <small>Replied</small>
+              <h5 className="mb-0">{inquiryStats.replied}</h5>
+            </div>
+          </div>
+          <div className="col-md-3 col-6">
+            <div className="card bg-success text-white text-center p-2">
+              <small>Resolved</small>
+              <h5 className="mb-0">{inquiryStats.resolved}</h5>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="container my-5">
         <div className="row">
@@ -440,14 +653,6 @@ function BusinessProfile() {
                       )}
                     </div>
                   </div>
-                  {/* <div className="col-md-2">
-                    <button 
-                      className="btn btn-outline-primary btn-sm w-100" 
-                      onClick={() => fetchProducts(businessInfo._id)}
-                    >
-                      <i className="bi bi-arrow-repeat"></i> Refresh
-                    </button>
-                  </div> */}
                 </div>
                 
                 {searchTerm && (
@@ -636,7 +841,262 @@ function BusinessProfile() {
         </div>
       </div>
 
-      {/* MODAL */}
+      {/* INQUIRY MODAL */}
+      <div className="modal fade" id="inquiryModal" tabIndex="-1">
+        <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+          <div className="modal-content">
+            <div className="modal-header bg-primary text-white">
+              <h5 className="modal-title">
+                <i className="bi bi-envelope me-2"></i>
+                Product Inquiries
+                {inquiryStats.pending > 0 && (
+                  <span className="badge bg-danger ms-2">{inquiryStats.pending} new</span>
+                )}
+              </h5>
+              <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div className="modal-body">
+              {inquiries.length === 0 ? (
+                <div className="text-center py-5">
+                  <i className="bi bi-inbox fs-1 text-muted"></i>
+                  <p className="text-muted mt-2">No inquiries received yet</p>
+                </div>
+              ) : (
+                <div className="list-group">
+                  {inquiries.map((inquiry) => (
+                    <div
+                      key={inquiry._id}
+                      className={`list-group-item list-group-item-action ${
+                        inquiry.status === "pending" ? "border-start border-warning border-4" : ""
+                      }`}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div className="flex-grow-1">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="fs-5">{getInquiryTypeIcon(inquiry.inquiryType)}</span>
+                            <h6 className="mb-0">
+                              {inquiry.subject}
+                              {inquiry.status === "pending" && (
+                                <span className="badge bg-warning text-dark ms-2">New</span>
+                              )}
+                            </h6>
+                          </div>
+                          <small className="text-muted">
+                            <i className="bi bi-person me-1"></i>
+                            {inquiry.customerName} • 
+                            <i className="bi bi-envelope ms-2 me-1"></i>
+                            {inquiry.customerEmail}
+                          </small>
+                          <div className="mt-1">
+                            <small className="text-muted">
+                              Product: {inquiry.productName} • 
+                              Quantity: {inquiry.quantity}
+                            </small>
+                          </div>
+                          <p className="mb-1 text-truncate" style={{ maxWidth: "400px" }}>
+                            {inquiry.message}
+                          </p>
+                        </div>
+                        <div className="text-end ms-3">
+                          <span className={`badge ${getStatusBadge(inquiry.status)}`}>
+                            {inquiry.status}
+                          </span>
+                          <br />
+                          <small className="text-muted">
+                            {new Date(inquiry.createdAt).toLocaleDateString()}
+                          </small>
+                          <br />
+                          <button
+                            className="btn btn-sm btn-primary mt-1"
+                            onClick={() => viewInquiry(inquiry._id)}
+                          >
+                            <i className="bi bi-eye me-1"></i>View
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* INQUIRY DETAIL MODAL */}
+      {selectedInquiry && (
+        <div
+          className="modal fade show d-block"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9999 }}
+          onClick={() => setShowInquiryModal(false)}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header bg-primary text-white">
+                <h5 className="modal-title">
+                  {getInquiryTypeIcon(selectedInquiry.inquiryType)} {selectedInquiry.subject}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setShowInquiryModal(false)}
+                ></button>
+              </div>
+
+              <div className="modal-body">
+                {inquiryLoading ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border text-primary"></div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Customer Info */}
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <strong>Customer:</strong>
+                        <p>{selectedInquiry.customerName}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Email:</strong>
+                        <p>{selectedInquiry.customerEmail}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Phone:</strong>
+                        <p>{selectedInquiry.customerPhone}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Status:</strong>
+                        <p>
+                          <span className={`badge ${getStatusBadge(selectedInquiry.status)}`}>
+                            {selectedInquiry.status}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <hr />
+
+                    {/* Product Info */}
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <strong>Product:</strong>
+                        <p>{selectedInquiry.productName}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Quantity:</strong>
+                        <p>{selectedInquiry.quantity}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Inquiry Type:</strong>
+                        <p>{selectedInquiry.inquiryType}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Date:</strong>
+                        <p>{new Date(selectedInquiry.createdAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    <hr />
+
+                    {/* Message */}
+                    <div className="mb-3">
+                      <strong>Message:</strong>
+                      <div className="bg-light p-3 rounded mt-1">
+                        {selectedInquiry.message}
+                      </div>
+                    </div>
+
+                    {/* Responses */}
+                    {selectedInquiry.responses && selectedInquiry.responses.length > 0 && (
+                      <>
+                        <hr />
+                        <h6>Responses:</h6>
+                        {selectedInquiry.responses.map((response, idx) => (
+                          <div
+                            key={idx}
+                            className={`p-2 rounded mb-2 ${
+                              response.sender === "business_owner"
+                                ? "bg-primary text-white"
+                                : "bg-secondary text-white"
+                            }`}
+                          >
+                            <small>
+                              {response.sender === "business_owner" ? "You" : "Customer"} • 
+                              {new Date(response.createdAt).toLocaleString()}
+                            </small>
+                            <p className="mb-0">{response.message}</p>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Reply Form */}
+                    {selectedInquiry.status !== "resolved" && (
+                      <>
+                        <hr />
+                        <h6>Reply to Customer:</h6>
+                        <div className="input-group">
+                          <textarea
+                            className="form-control"
+                            rows="3"
+                            placeholder="Type your reply here..."
+                            value={replyMessage}
+                            onChange={(e) => setReplyMessage(e.target.value)}
+                          ></textarea>
+                        </div>
+                        <div className="mt-2 d-flex gap-2">
+                          <button
+                            className="btn btn-primary"
+                            onClick={sendReply}
+                            disabled={sendingReply}
+                          >
+                            {sendingReply ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                Sending...
+                              </>
+                            ) : (
+                              <i className="bi bi-send me-2"></i>
+                            )}
+                            Send Reply
+                          </button>
+                          <button
+                            className="btn btn-success"
+                            onClick={() => resolveInquiry(selectedInquiry._id)}
+                          >
+                            <i className="bi bi-check-circle me-2"></i>
+                            Mark as Resolved
+                          </button>
+                          <button
+                            className="btn btn-danger"
+                            onClick={() => deleteInquiry(selectedInquiry._id)}
+                          >
+                            <i className="bi bi-trash me-2"></i>
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowInquiryModal(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRODUCT MODAL */}
       <div className="modal fade" id="productModal">
         <div className="modal-dialog modal-lg modal-dialog-centered">
           <div className="modal-content">
@@ -671,7 +1131,6 @@ function BusinessProfile() {
                     <option value="textile">Textile & Apparel</option>
                     <option value="safety">Safety Equipment</option>
                     <option value="other">Other</option>
-                    {/* Add more options as needed */}
                   </select>
                 </div>
 

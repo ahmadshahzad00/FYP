@@ -14,8 +14,6 @@ function AdminSignin() {
     setLoading(true);
     setError("");
 
-    console.log("Attempting login with:", { email });
-
     try {
       const response = await axios.post(
         "http://localhost:5000/api/admin/admin-signin",
@@ -25,20 +23,11 @@ function AdminSignin() {
         }
       );
 
-      console.log("Login response:", response.data);
-
       if (response.data.success) {
-        // Store token and admin data
         localStorage.setItem("adminToken", response.data.token);
         localStorage.setItem("adminData", JSON.stringify(response.data.admin));
         
-        console.log("Token stored successfully");
-        console.log("Redirecting to dashboard...");
-        
-        // Small delay to ensure storage is complete
-        setTimeout(() => {
-          navigate("/admin-dashboard");
-        }, 100);
+        navigate("/admin-dashboard");
       }
     } catch (err) {
       console.error("Login error:", err);

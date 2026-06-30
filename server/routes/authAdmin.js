@@ -2,170 +2,172 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import AdminUser from "../models/AdminUser.js";
-import { protectAdmin } from "../middleware/middleware.js";
 
 const router = express.Router();
+
+// Admin Signin
+router.post("/admin-signin", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Please provide email and password" 
+      });
+    }
+    
+    // Find admin user
+    const admin = await AdminUser.findOne({ email });
+    if (!admin) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Invalid credentials" 
+      });
+    }
+    
+    // Check if admin is active
+    if (!admin.isActive) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Account is deactivated. Please contact super admin." 
+      });
+    }
+    
+    // Check password
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Invalid credentials" 
+      });
+    }
+    
+    // Update last login
+    admin.lastLogin = new Date();
+    await admin.save();
+    
+    // Create token with admin ID
+    const token = jwt.sign(
+      { 
+        id: admin._id, 
+        email: admin.email,
+        role: admin.role
+      }, 
+      process.env.JWT_SECRET || "secretkey",
+      { expiresIn: "7d" }
+    );
+    
+    res.json({
+      success: true,
+      token,
+      admin: {
+        id: admin._id,
+        firstname: admin.firstname,
+        lastname: admin.lastname,
+        email: admin.email,
+        role: admin.role
+      }
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error" 
+    });
+  }
+});
 
 // Admin Registration
 router.post("/admin-register", async (req, res) => {
   try {
     const { firstname, lastname, phone, email, password, role } = req.body;
-
-    console.log("Registration attempt:", { firstname, lastname, phone, email });
-
-    if (!firstname || !lastname || !phone || !email || !password) {
+    
+    // Check if admin already exists
+    const existingAdmin = await AdminUser.findOne({ email });
+    if (existingAdmin) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "Admin already exists with this email"
       });
     }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters long",
-      });
-    }
-
-    const existingUser = await AdminUser.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "User already exists with this email",
-      });
-    }
-
+    
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = new AdminUser({
+    
+    // Create admin
+    const admin = new AdminUser({
       firstname,
       lastname,
       phone,
       email,
       password: hashedPassword,
       role: role || "business_handler",
+      isActive: true
     });
-
-    await newUser.save();
-
+    
+    await admin.save();
+    
     res.status(201).json({
       success: true,
-      message: "Admin registered successfully",
+      message: "Admin created successfully",
+      admin: {
+        id: admin._id,
+        firstname: admin.firstname,
+        lastname: admin.lastname,
+        email: admin.email,
+        role: admin.role
+      }
     });
-  } catch (err) {
-    console.error("Registration error:", err);
+  } catch (error) {
+    console.error("Registration error:", error);
     res.status(500).json({
       success: false,
-      message: err.message,
+      message: "Server error"
     });
   }
 });
 
-// Admin Sign In
-router.post("/admin-signin", async (req, res) => {
+// Verify Token
+router.get("/verify-token", async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    console.log("Login attempt for email:", email);
-
-    if (!email || !password) {
-      return res.status(400).json({
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ 
         success: false,
-        message: "Email and password are required",
+        message: "No token provided" 
       });
     }
-
-    const admin = await AdminUser.findOne({ email });
-    console.log("User found:", admin ? "Yes" : "No");
+    
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secretkey");
+    
+    const admin = await AdminUser.findById(decoded.id).select("-password");
     
     if (!admin) {
-      return res.status(401).json({
+      return res.status(401).json({ 
         success: false,
-        message: "Invalid email or password",
+        message: "Admin not found" 
       });
     }
-
-    const isPasswordValid = await bcrypt.compare(password, admin.password);
-    console.log("Password valid:", isPasswordValid);
     
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
-      });
-    }
-
-    // Update last login if field exists
-    if (admin.lastLogin !== undefined) {
-      admin.lastLogin = new Date();
-      await admin.save();
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { 
-        id: admin._id, 
-        email: admin.email, 
-        role: admin.role 
-      },
-      process.env.JWT_SECRET || "secretkey",
-      { expiresIn: "7d" }
-    );
-
-    // Prepare admin data
-    const adminData = {
-      id: admin._id,
-      firstname: admin.firstname,
-      lastname: admin.lastname,
-      email: admin.email,
-      phone: admin.phone,
-      role: admin.role,
-      createdAt: admin.createdAt,
-    };
-
-    console.log("Login successful for:", email);
-
-    res.status(200).json({
+    res.json({
       success: true,
-      message: "Login successful",
-      token,
-      admin: adminData,
-    });
-  } catch (err) {
-    console.error("Admin signin error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error. Please try again later.",
-    });
-  }
-});
-
-// Verify token endpoint (using protectAdmin middleware)
-router.get("/verify-token", protectAdmin, async (req, res) => {
-  try {
-    res.status(200).json({
-      valid: true,
-      admin: req.admin,
+      admin: {
+        id: admin._id,
+        firstname: admin.firstname,
+        lastname: admin.lastname,
+        email: admin.email,
+        role: admin.role
+      }
     });
   } catch (error) {
-    res.status(401).json({
-      valid: false,
-      message: error.message,
-    });
-  }
-});
-
-// Get admin profile (using protectAdmin middleware)
-router.get("/admin-profile", protectAdmin, async (req, res) => {
-  try {
-    res.status(200).json({
-      success: true,
-      admin: req.admin,
-    });
-  } catch (error) {
-    res.status(500).json({
+    console.error("Token verification error:", error);
+    res.status(401).json({ 
       success: false,
-      message: error.message,
+      message: "Invalid token" 
     });
   }
 });

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 function AdminSidebar() {
@@ -7,23 +7,36 @@ function AdminSidebar() {
   const adminToken = localStorage.getItem("adminToken");
   const adminData = localStorage.getItem("adminData");
 
-  if (!adminToken || !adminData) {
-    navigate("/admin-login");
-    return null;
-  }
+  // Check authentication on component mount
+  useEffect(() => {
+    if (!adminToken || !adminData) {
+      navigate("/admin-login");
+    }
+  }, [adminToken, adminData, navigate]);
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
-
       localStorage.removeItem("adminToken");
       localStorage.removeItem("adminData");
-      
-      
       navigate("/admin-login");
-      
-      alert("Logged out successfully!");
     }
   };
+
+  // If not authenticated, return null (will redirect via useEffect)
+  if (!adminToken || !adminData) {
+    return null;
+  }
+
+  // Parse admin data
+  let admin = null;
+  try {
+    admin = JSON.parse(adminData);
+  } catch (e) {
+    console.error("Error parsing admin data:", e);
+    localStorage.removeItem("adminData");
+    navigate("/admin-login");
+    return null;
+  }
 
   return (
     <div
@@ -33,13 +46,13 @@ function AdminSidebar() {
       <div>
         <h3 className="text-center mb-4">Admin Panel</h3>
         
-        {adminData && (
+        {admin && (
           <div className="text-center mb-3 pb-3 border-bottom border-secondary">
             <i className="bi bi-person-circle fs-1"></i>
             <p className="mt-2 mb-0">
-              {JSON.parse(adminData)?.firstname} {JSON.parse(adminData)?.lastname}
+              {admin.firstname} {admin.lastname}
             </p>
-            <small className="text-muted">{JSON.parse(adminData)?.role}</small>
+            <small className="text-muted">{admin.role}</small>
           </div>
         )}
         
@@ -54,11 +67,6 @@ function AdminSidebar() {
               <i className="bi bi-box-seam me-2"></i> Products List
             </Link>
           </li>
-          {/* <li className="nav-item">
-            <Link to="/businessList" className="nav-link text-white">
-              <i className="bi bi-building me-2"></i> Business List
-            </Link>
-          </li> */}
           <li className="nav-item">
             <Link to="/businessRequests" className="nav-link text-white">
               <i className="bi bi-envelope-paper me-2"></i> Business Requests

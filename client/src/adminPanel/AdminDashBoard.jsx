@@ -20,44 +20,17 @@ function AdminDashBoard() {
     const token = localStorage.getItem("adminToken");
     const adminData = localStorage.getItem("adminData");
     
-    console.log("=== Dashboard Auth Check ===");
-    console.log("Token exists:", !!token);
-    console.log("Admin data exists:", !!adminData);
-    
     if (!token || !adminData) {
-      console.log("No credentials found, redirecting to login");
       navigate("/admin-login");
       return;
     }
 
     try {
-      console.log("Verifying token with backend...");
-      const response = await axios.get(
-        "http://localhost:5000/api/admin/verify-token",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      
-      console.log("Verification response:", response.data);
-      
-      if (response.data.valid) {
-        setAdmin(response.data.admin);
-        console.log("Authentication successful!");
-        // Fetch stats after successful authentication
-        await fetchStats(token);
-      } else {
-        console.log("Token invalid, clearing storage");
-        localStorage.removeItem("adminToken");
-        localStorage.removeItem("adminData");
-        navigate("/admin-login");
-      }
+      const parsedAdmin = JSON.parse(adminData);
+      setAdmin(parsedAdmin);
+      await fetchStats(token);
     } catch (error) {
       console.error("Auth error:", error);
-      console.error("Error response:", error.response?.data);
-      
       localStorage.removeItem("adminToken");
       localStorage.removeItem("adminData");
       navigate("/admin-login");
@@ -68,7 +41,6 @@ function AdminDashBoard() {
 
   const fetchStats = async (token) => {
     try {
-      // Fetch all businesses
       const businessResponse = await axios.get(
         "http://localhost:5000/api/business/all",
         {
@@ -84,12 +56,15 @@ function AdminDashBoard() {
       const pendingBusinesses = businesses.filter(b => b.status === "pending").length;
       const rejectedBusinesses = businesses.filter(b => b.status === "rejected").length;
       
-      // Fetch all products
-      const productResponse = await axios.get(
-        "http://localhost:5000/api/product/products-with-business"
-      );
-      
-      const totalProducts = productResponse.data.count || 0;
+      let totalProducts = 0;
+      try {
+        const productResponse = await axios.get(
+          "http://localhost:5000/api/product/products-with-business"
+        );
+        totalProducts = productResponse.data.count || 0;
+      } catch (productError) {
+        // Product endpoint might not exist, keep default
+      }
       
       setStats({
         businesses: {
@@ -102,20 +77,29 @@ function AdminDashBoard() {
           total: totalProducts,
         },
       });
+      
     } catch (error) {
       console.error("Error fetching stats:", error);
-      // Keep default values if fetch fails
+      
+      if (error.response?.status === 401) {
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminData");
+        navigate("/admin-login");
+      }
     }
   };
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
-        <div className="text-center">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
+      <div className="d-flex" style={{ minHeight: "100vh", background: "#f5f7fb" }}>
+        <AdminSidebar />
+        <div className="flex-grow-1 d-flex justify-content-center align-items-center">
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="mt-3">Loading dashboard...</p>
           </div>
-          <p className="mt-3">Verifying authentication...</p>
         </div>
       </div>
     );
@@ -237,7 +221,6 @@ function AdminDashBoard() {
                   <div className="col-md-4">
                     <Link to="/businessRequests" 
                       className="btn btn-outline-primary w-100 py-3"
-                      // onClick={() => window.location.href = "/businessRequests"}
                     >
                       <i className="bi bi-building fs-4 d-block mb-2"></i>
                       Manage Business Requests
@@ -246,7 +229,6 @@ function AdminDashBoard() {
                   <div className="col-md-4">
                     <Link to="/productList" 
                       className="btn btn-outline-success w-100 py-3"
-                      // onClick={() => "/productList"}
                     >
                       <i className="bi bi-box-seam fs-4 d-block mb-2"></i>
                       View All Products
@@ -255,7 +237,6 @@ function AdminDashBoard() {
                   <div className="col-md-4">
                     <Link to="/businessList" 
                       className="btn btn-outline-info w-100 py-3"
-                      // onClick={() => window.location.href = "/admin-profile"}
                     >
                       <i className="bi bi-person fs-4 d-block mb-2"></i>
                       Admin Profile

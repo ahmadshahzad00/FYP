@@ -7,6 +7,8 @@ import authUser from "./routes/authUser.js";
 import registerBusinessRoute from "./routes/registerBusiness.js";
 import fileCheckRoutes from "./routes/fileCheck.js";
 import uploadProduct from "./routes/uploadProduct.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import productInquiryRoutes from "./routes/productInquiryRoutes.js";
 
 dotenv.config();
 
@@ -18,13 +20,15 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static("uploads"));
 
-// ROUTE 
+// ROUTES 
 app.use("/api/admin", authAdmin);
 app.use("/api/auth", authUser);
 app.use("/api/auth/admin", authAdmin);
 app.use("/api/business", registerBusinessRoute);
 app.use("/api/file", fileCheckRoutes);
 app.use("/api/product", uploadProduct);
+app.use("/api/contact", contactRoutes);
+app.use("/api/inquiry", productInquiryRoutes);
 
 connectDB();
 
