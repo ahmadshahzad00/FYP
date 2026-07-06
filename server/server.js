@@ -9,6 +9,8 @@ import fileCheckRoutes from "./routes/fileCheck.js";
 import uploadProduct from "./routes/uploadProduct.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import productInquiryRoutes from "./routes/productInquiryRoutes.js";
+import teamRoutes from "./routes/teamRoutes.js";
+import complaintRoutes from "./routes/complaintRoutes.js";
 
 dotenv.config();
 
@@ -29,11 +31,23 @@ app.use("/api/file", fileCheckRoutes);
 app.use("/api/product", uploadProduct);
 app.use("/api/contact", contactRoutes);
 app.use("/api/inquiry", productInquiryRoutes);
+app.use("/api/team", teamRoutes);
+app.use("/api/complaints", complaintRoutes);
 
 connectDB();
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+  console.log(`✅ Server started on port ${PORT}`);
+  console.log(`📋 Routes registered:`);
+  console.log(`   - /api/admin`);
+  console.log(`   - /api/auth`);
+  console.log(`   - /api/business`);
+  console.log(`   - /api/file`);
+  console.log(`   - /api/product`);
+  console.log(`   - /api/contact`);
+  console.log(`   - /api/inquiry`);
+  console.log(`   - /api/team`);
+  console.log(`   - /api/complaints ✅`);
 });

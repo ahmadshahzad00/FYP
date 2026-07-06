@@ -3,6 +3,7 @@ import ProductInquiry from "../models/ProductInquiry.js";
 import Product from "../models/Product.js";
 import Business from "../models/Business.js";
 import { protect } from "../middleware/middleware.js";
+import { sendInquiryReplyEmail } from "../config/email.js";
 
 const router = express.Router();
 
@@ -98,6 +99,89 @@ router.post("/", protect, async (req, res) => {
 });
 
 // ============================================
+// BUSINESS OWNER: Reply to inquiry (WITH EMAIL)
+// ============================================
+router.post("/:id/reply", protect, async (req, res) => {
+  try {
+    const { replyMessage } = req.body;
+
+    if (!replyMessage || replyMessage.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Reply message is required",
+      });
+    }
+
+    // Find the inquiry
+    const inquiry = await ProductInquiry.findById(req.params.id);
+
+    if (!inquiry) {
+      return res.status(404).json({
+        success: false,
+        message: "Inquiry not found",
+      });
+    }
+
+    // Check if the user owns this business
+    const business = await Business.findOne({ userId: req.user.id });
+    if (!business || inquiry.business.toString() !== business._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have permission to reply to this inquiry",
+      });
+    }
+
+    // Add response to database
+    await inquiry.addResponse(replyMessage, "business_owner", req.user.id);
+    await inquiry.populate("businessOwner", "name email");
+    await inquiry.populate("product", "name price images");
+
+    // ============================================
+    // SEND EMAIL FROM BUSINESS OWNER'S EMAIL
+    // ============================================
+    try {
+      const emailData = {
+        productName: inquiry.productName,
+        businessName: business.companyName,
+        businessEmail: business.email, // Business owner's email
+        businessOwnerName: business.ownerName,
+        businessPhone: business.phone,
+        businessAddress: business.factoryAddress,
+        replyMessage: replyMessage,
+        inquirySubject: inquiry.subject,
+        productId: inquiry.product,
+        inquiryDate: inquiry.createdAt,
+      };
+
+      // Send email
+      await sendInquiryReplyEmail(
+        inquiry.customerEmail,
+        inquiry.customerName,
+        emailData
+      );
+
+      // console.log(`📧 Reply email sent from ${business.email} to ${inquiry.customerEmail}`);
+    } catch (emailError) {
+      console.error("❌ Failed to send email:", emailError);
+      // Continue even if email fails - the reply is saved
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Reply sent successfully! Email notification sent to customer.",
+      data: inquiry,
+    });
+
+  } catch (error) {
+    console.error("Error sending reply:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error: " + error.message,
+    });
+  }
+});
+
+// ============================================
 // BUSINESS OWNER: Get all inquiries
 // ============================================
 router.get("/my-inquiries", protect, async (req, res) => {
@@ -177,56 +261,6 @@ router.get("/:id", protect, async (req, res) => {
 
   } catch (error) {
     console.error("Error fetching inquiry:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error: " + error.message,
-    });
-  }
-});
-
-// ============================================
-// BUSINESS OWNER: Reply to inquiry
-// ============================================
-router.post("/:id/reply", protect, async (req, res) => {
-  try {
-    const { replyMessage } = req.body;
-
-    if (!replyMessage || replyMessage.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Reply message is required",
-      });
-    }
-
-    const inquiry = await ProductInquiry.findById(req.params.id);
-
-    if (!inquiry) {
-      return res.status(404).json({
-        success: false,
-        message: "Inquiry not found",
-      });
-    }
-
-    const business = await Business.findOne({ userId: req.user.id });
-    if (!business || inquiry.business.toString() !== business._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "You don't have permission to reply to this inquiry",
-      });
-    }
-
-    await inquiry.addResponse(replyMessage, "business_owner", req.user.id);
-    await inquiry.populate("businessOwner", "name email");
-    await inquiry.populate("product", "name price images");
-
-    res.status(200).json({
-      success: true,
-      message: "Reply sent successfully!",
-      data: inquiry,
-    });
-
-  } catch (error) {
-    console.error("Error sending reply:", error);
     res.status(500).json({
       success: false,
       message: "Server error: " + error.message,

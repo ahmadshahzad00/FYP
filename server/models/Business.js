@@ -51,8 +51,35 @@ const businessSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+
+    // Verification Details
+    verificationDetails: {
+      verified: {
+        type: Boolean,
+        default: false
+      },
+      message: {
+        type: String,
+        default: ""
+      },
+      data: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
+      },
+      verifiedAt: {
+        type: Date
+      },
+      verifiedBy: {
+        type: String,
+        enum: ["auto", "admin"],
+        default: "auto"
+      }
+    }
   },
   { timestamps: true }
 );
+
+// Index for faster member ID lookups
+businessSchema.index({ memberId: 1 });
 
 export default mongoose.model("Business", businessSchema);

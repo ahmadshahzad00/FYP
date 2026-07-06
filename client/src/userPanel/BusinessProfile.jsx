@@ -11,6 +11,29 @@ function BusinessProfile() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchField, setSearchField] = useState("name");
   
+  // Edit Business Modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    companyName: "",
+    ownerName: "",
+    email: "",
+    phone: "",
+    whatsapp: "",
+    yearEstablished: "",
+    factoryAddress: "",
+    memberId: "",
+    category: "",
+    products: "",
+    website: "",
+    description: "",
+    facebook: "",
+    instagram: "",
+    twitter: "",
+    tiktok: "",
+    pinterest: "",
+  });
+  const [editLoading, setEditLoading] = useState(false);
+  
   // Inquiry states
   const [inquiries, setInquiries] = useState([]);
   const [inquiryStats, setInquiryStats] = useState({
@@ -21,7 +44,7 @@ function BusinessProfile() {
     resolved: 0,
   });
   const [selectedInquiry, setSelectedInquiry] = useState(null);
-  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [replyMessage, setReplyMessage] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
   const [inquiryLoading, setInquiryLoading] = useState(false);
@@ -54,38 +77,93 @@ function BusinessProfile() {
     filterProducts();
   }, [searchTerm, searchField, products]);
 
+  // ============================================
+  // FETCH BUSINESS
+  // ============================================
   const fetchBusiness = async () => {
     try {
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        console.error("No token found");
+        setLoading(false);
+        return;
+      }
+
       const res = await axios.get(
         "http://localhost:5000/api/business/my-business",
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
-      setBusinessInfo(res.data);
-      await fetchProducts(res.data._id);
-      await fetchInquiries(); // Fetch inquiries after business is loaded
+      
+      console.log("Business response:", res.data);
+      
+      let businessData = res.data.business || res.data;
+      
+      if (res.data.business) {
+        businessData = res.data.business;
+      }
+      
+      setBusinessInfo(businessData);
+      
+      const businessId = businessData._id || res.data._id;
+      
+      if (!businessId) {
+        console.error("No business ID found in response:", res.data);
+        setLoading(false);
+        return;
+      }
+      
+      await fetchProducts(businessId);
+      await fetchInquiries();
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching business:", err);
+      if (err.response?.status === 404) {
+        setBusinessInfo(null);
+      } else {
+        console.error("Failed to load business profile:", err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // ============================================
+  // FETCH PRODUCTS
+  // ============================================
   const fetchProducts = async (businessId) => {
+    if (!businessId) {
+      console.error("No businessId provided to fetchProducts");
+      setProducts([]);
+      setFilteredProducts([]);
+      return;
+    }
+    
     try {
+      const token = localStorage.getItem("token");
+      
       const res = await axios.get(
         `http://localhost:5000/api/product/products/${businessId}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       
-      const formattedProducts = res.data.products.map(product => ({
+      let productsData = [];
+      if (res.data.products) {
+        productsData = res.data.products;
+      } else if (res.data.data) {
+        productsData = res.data.data;
+      } else if (Array.isArray(res.data)) {
+        productsData = res.data;
+      }
+      
+      const formattedProducts = productsData.map(product => ({
         ...product,
         id: product._id,
         images: product.images || [],
@@ -96,6 +174,87 @@ function BusinessProfile() {
       setFilteredProducts(formattedProducts);
     } catch (err) {
       console.error("Error fetching products:", err);
+      setProducts([]);
+      setFilteredProducts([]);
+    }
+  };
+
+  // ============================================
+  // Check if user can add products
+  // ============================================
+  const canAddProduct = () => {
+    return businessInfo && businessInfo.status === "approved";
+  };
+
+  // ============================================
+  // EDIT BUSINESS FUNCTIONS
+  // ============================================
+  const openEditModal = () => {
+    if (!businessInfo) return;
+    
+    setEditForm({
+      companyName: businessInfo.companyName || "",
+      ownerName: businessInfo.ownerName || "",
+      email: businessInfo.email || "",
+      phone: businessInfo.phone || "",
+      whatsapp: businessInfo.whatsapp || "",
+      yearEstablished: businessInfo.yearEstablished || "",
+      factoryAddress: businessInfo.factoryAddress || "",
+      memberId: businessInfo.memberId || "",
+      category: businessInfo.category || "",
+      products: businessInfo.products || "",
+      website: businessInfo.website || "",
+      description: businessInfo.description || "",
+      facebook: businessInfo.facebook || "",
+      instagram: businessInfo.instagram || "",
+      twitter: businessInfo.twitter || "",
+      tiktok: businessInfo.tiktok || "",
+      pinterest: businessInfo.pinterest || "",
+    });
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditLoading(false);
+  };
+
+  const handleEditChange = (e) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!businessInfo) return;
+    
+    setEditLoading(true);
+    
+    try {
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.put(
+        `http://localhost:5000/api/business/update-business/${businessInfo._id}`,
+        editForm,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      if (response.data.success) {
+        alert(response.data.msg);
+        // Refresh business data
+        await fetchBusiness();
+        closeEditModal();
+      }
+    } catch (err) {
+      console.error("Error updating business:", err);
+      alert(err.response?.data?.msg || "Failed to update business");
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -104,39 +263,56 @@ function BusinessProfile() {
   // ============================================
   const fetchInquiries = async () => {
     try {
+      const token = localStorage.getItem("token");
+      
       const res = await axios.get(
         "http://localhost:5000/api/inquiry/my-inquiries",
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       
-      setInquiries(res.data.data);
-      setInquiryStats(res.data.stats);
+      setInquiries(res.data.data || []);
+      setInquiryStats(res.data.stats || {
+        total: 0,
+        pending: 0,
+        unread: 0,
+        replied: 0,
+        resolved: 0,
+      });
     } catch (err) {
       console.error("Error fetching inquiries:", err);
+      setInquiries([]);
+      setInquiryStats({
+        total: 0,
+        pending: 0,
+        unread: 0,
+        replied: 0,
+        resolved: 0,
+      });
     }
   };
 
   const viewInquiry = async (id) => {
     setInquiryLoading(true);
     try {
+      const token = localStorage.getItem("token");
+      
       const res = await axios.get(
         `http://localhost:5000/api/inquiry/${id}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       
       setSelectedInquiry(res.data.data);
-      setShowInquiryModal(true);
+      setShowDetailModal(true);
       setReplyMessage("");
       
-      // Refresh inquiries list
       await fetchInquiries();
     } catch (err) {
       console.error("Error fetching inquiry details:", err);
@@ -144,6 +320,12 @@ function BusinessProfile() {
     } finally {
       setInquiryLoading(false);
     }
+  };
+
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedInquiry(null);
+    setReplyMessage("");
   };
 
   const sendReply = async () => {
@@ -154,12 +336,14 @@ function BusinessProfile() {
 
     setSendingReply(true);
     try {
+      const token = localStorage.getItem("token");
+      
       const res = await axios.post(
         `http://localhost:5000/api/inquiry/${selectedInquiry._id}/reply`,
         { replyMessage },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -167,7 +351,7 @@ function BusinessProfile() {
       setSelectedInquiry(res.data.data);
       setReplyMessage("");
       await fetchInquiries();
-      alert("Reply sent successfully!");
+      alert("✅ Reply sent successfully! Email notification sent to customer.");
     } catch (err) {
       console.error("Error sending reply:", err);
       alert(err.response?.data?.message || "Failed to send reply");
@@ -180,12 +364,14 @@ function BusinessProfile() {
     if (!window.confirm("Mark this inquiry as resolved?")) return;
 
     try {
+      const token = localStorage.getItem("token");
+      
       await axios.put(
         `http://localhost:5000/api/inquiry/${id}/resolve`,
         {},
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -205,19 +391,20 @@ function BusinessProfile() {
     if (!window.confirm("Are you sure you want to delete this inquiry?")) return;
 
     try {
+      const token = localStorage.getItem("token");
+      
       await axios.delete(
         `http://localhost:5000/api/inquiry/${id}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       
       await fetchInquiries();
       if (selectedInquiry && selectedInquiry._id === id) {
-        setShowInquiryModal(false);
-        setSelectedInquiry(null);
+        closeDetailModal();
       }
       alert("Inquiry deleted successfully!");
     } catch (err) {
@@ -325,6 +512,11 @@ function BusinessProfile() {
   };
 
   const openAddModal = () => {
+    if (!canAddProduct()) {
+      alert("Your business must be verified before you can add products.");
+      return;
+    }
+    
     setForm({
       images: [],
       name: "",
@@ -342,7 +534,12 @@ function BusinessProfile() {
     setEditImageChanged(false);
   };
 
-  const openEditModal = (product) => {
+  const openEditProductModal = (product) => {
+    if (!canAddProduct()) {
+      alert("Your business must be verified before you can edit products.");
+      return;
+    }
+    
     setForm({
       id: product._id,
       images: [],
@@ -370,6 +567,7 @@ function BusinessProfile() {
     setUploading(true);
 
     try {
+      const token = localStorage.getItem("token");
       const data = new FormData();
       data.append("businessId", businessInfo._id);
       data.append("name", form.name);
@@ -399,7 +597,7 @@ function BusinessProfile() {
           data,
           {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "multipart/form-data",
             },
           }
@@ -412,7 +610,7 @@ function BusinessProfile() {
           data,
           {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "multipart/form-data",
             },
           }
@@ -446,11 +644,13 @@ function BusinessProfile() {
   const handleDelete = async (id) => {
     if (window.confirm("Delete this product?")) {
       try {
+        const token = localStorage.getItem("token");
+        
         await axios.delete(
           `http://localhost:5000/api/product/delete-product/${id}`,
           {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -485,7 +685,17 @@ function BusinessProfile() {
       <>
         <UserHeader />
         <div className="container text-center py-5">
-          <h4>Business not found</h4>
+          <div className="mb-4">
+            <i className="bi bi-building fs-1 text-muted"></i>
+          </div>
+          <h4>No Business Found</h4>
+          <p className="text-muted">You haven't registered a business yet.</p>
+          <button 
+            className="btn btn-primary mt-3"
+            onClick={() => window.location.href = "/register-business"}
+          >
+            Register Your Business
+          </button>
         </div>
         <UserFooter />
       </>
@@ -519,7 +729,7 @@ function BusinessProfile() {
           <div className="ms-4 flex-grow-1">
             <div className="d-flex justify-content-between align-items-start flex-wrap">
               <div>
-                <h3 className="fw-bold mb-1">{businessInfo.companyName}</h3>
+                <h3 className="fw-bolder mb-1 text-dark">{businessInfo.companyName}</h3>
                 <p className="text-muted mb-1">Business Owner Dashboard</p>
                 <span className="badge bg-primary">{businessInfo.factoryAddress}</span>
                 <span
@@ -531,26 +741,47 @@ function BusinessProfile() {
                       : "bg-warning text-dark"
                   }`}
                 >
-                  {businessInfo.status}
+                  {businessInfo.status === "approved" 
+                    ? "Approved" 
+                    : businessInfo.status === "rejected" 
+                    ? "Not Verified" 
+                    : "⏳ Pending Verification"}
                 </span>
-              </div>
-
-              {/* INQUIRY BUTTON */}
-              <button
-                className="btn btn-primary position-relative"
-                onClick={() => fetchInquiries()}
-                data-bs-toggle="modal"
-                data-bs-target="#inquiryModal"
-              >
-                <i className="bi bi-envelope me-2"></i>
-                Inquiries
-                {inquiryStats.pending > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                    {inquiryStats.pending}
-                    <span className="visually-hidden">new inquiries</span>
+                {businessInfo.verificationDetails?.verified && (
+                  <span className="badge bg-info ms-1">
+                    <i className="bi bi-check-circle me-1"></i>
+                    Verified
                   </span>
                 )}
-              </button>
+              </div>
+
+              <div className="d-flex gap-2">
+                {/* EDIT BUSINESS BUTTON */}
+                <button
+                  className="btn btn-outline-primary"
+                  onClick={openEditModal}
+                >
+                  <i className="bi bi-pencil me-1"></i>
+                  Edit Business
+                </button>
+
+                {/* INQUIRY BUTTON */}
+                <button
+                  className="btn btn-primary position-relative"
+                  onClick={() => fetchInquiries()}
+                  data-bs-toggle="modal"
+                  data-bs-target="#inquiryModal"
+                >
+                  <i className="bi bi-envelope me-2"></i>
+                  Inquiries
+                  {inquiryStats.pending > 0 && (
+                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                      {inquiryStats.pending}
+                      <span className="visually-hidden">new inquiries</span>
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -586,6 +817,17 @@ function BusinessProfile() {
         </div>
       </div>
 
+      {/* Verification Warning Banner */}
+      {!canAddProduct() && (
+        <div className="container mt-3">
+          <div className="alert alert-warning">
+            <i className="bi bi-exclamation-triangle me-2"></i>
+            <strong>Account Not Verified:</strong> Please verify your MemberID. You cannot add or edit products until your business is verified. 
+            Your account verify on the base of MemberID.
+          </div>
+        </div>
+      )}
+
       <div className="container my-5">
         <div className="row">
           {/* PRODUCTS */}
@@ -597,14 +839,27 @@ function BusinessProfile() {
                 </h5>
 
                 <div className="d-flex gap-2">
-                  <button
-                    className="btn btn-primary btn-sm"
-                    data-bs-toggle="modal"
-                    data-bs-target="#productModal"
-                    onClick={openAddModal}
-                  >
-                    <i className="bi bi-plus-lg me-1"></i>Add Product
-                  </button>
+                  {canAddProduct() ? (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      data-bs-toggle="modal"
+                      data-bs-target="#productModal"
+                      onClick={openAddModal}
+                    >
+                      <i className="bi bi-plus-lg me-1"></i>Add Product
+                    </button>
+                  ) : (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      disabled
+                      title="Your business must be verified to add products"
+                    >
+                      <i className="bi bi-plus-lg me-1"></i>Add Product
+                      <span className="ms-1">
+                        <i className="bi bi-lock"></i>
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -689,14 +944,21 @@ function BusinessProfile() {
                     <>
                       <i className="bi bi-box fs-1 text-muted"></i>
                       <p className="text-muted mt-2">No products added yet</p>
-                      <button
-                        className="btn btn-outline-primary btn-sm"
-                        data-bs-toggle="modal"
-                        data-bs-target="#productModal"
-                        onClick={openAddModal}
-                      >
-                        Add Your First Product
-                      </button>
+                      {canAddProduct() ? (
+                        <button
+                          className="btn btn-outline-primary btn-sm"
+                          data-bs-toggle="modal"
+                          data-bs-target="#productModal"
+                          onClick={openAddModal}
+                        >
+                          Add Your First Product
+                        </button>
+                      ) : (
+                        <div className="text-warning small">
+                          <i className="bi bi-lock me-1"></i>
+                          Verification required to add products
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -767,20 +1029,29 @@ function BusinessProfile() {
                           </td>
                           <td>{p.availableQuantity}</td>
                           <td className="text-end">
-                            <button
-                              className="btn btn-outline-secondary btn-sm me-2"
-                              data-bs-toggle="modal"
-                              data-bs-target="#productModal"
-                              onClick={() => openEditModal(p)}
-                            >
-                              <i className="bi bi-pencil"></i>
-                            </button>
-                            <button
-                              className="btn btn-outline-danger btn-sm"
-                              onClick={() => handleDelete(p.id)}
-                            >
-                              <i className="bi bi-trash"></i>
-                            </button>
+                            {canAddProduct() ? (
+                              <>
+                                <button
+                                  className="btn btn-outline-secondary btn-sm me-2"
+                                  data-bs-toggle="modal"
+                                  data-bs-target="#productModal"
+                                  onClick={() => openEditProductModal(p)}
+                                >
+                                  <i className="bi bi-pencil"></i>
+                                </button>
+                                <button
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() => handleDelete(p.id)}
+                                >
+                                  <i className="bi bi-trash"></i>
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-muted small">
+                                <i className="bi bi-lock me-1"></i>
+                                Locked
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -802,6 +1073,17 @@ function BusinessProfile() {
                 <p><strong>Owner:</strong> {businessInfo.ownerName}</p>
                 <p><strong>Email:</strong> {businessInfo.email}</p>
                 <p><strong>Phone:</strong> {businessInfo.phone}</p>
+                <p><strong>Member ID:</strong> 
+                  <span className="badge bg-info text-dark ms-1">
+                    {businessInfo.memberId || "N/A"}
+                  </span>
+                </p>
+                {businessInfo.verificationDetails?.verified && (
+                  <p className="text-success">
+                    <i className="bi bi-check-circle me-1"></i>
+                    Verified: {businessInfo.verificationDetails.message}
+                  </p>
+                )}
 
                 <div className="d-flex gap-3 mt-3">
                   {businessInfo.facebook && (
@@ -834,15 +1116,300 @@ function BusinessProfile() {
                 <hr />
 
                 <p><strong>Category:</strong> {businessInfo.category}</p>
-                {businessInfo.memberId && <p><strong>MemberID:</strong> {businessInfo.memberId}</p>}
+                <p><strong>Year Established:</strong> {businessInfo.yearEstablished}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* INQUIRY MODAL */}
-      <div className="modal fade" id="inquiryModal" tabIndex="-1">
+      {/* ===== EDIT BUSINESS MODAL ===== */}
+      {showEditModal && (
+        <div
+          className="modal fade show d-block"
+          style={{ 
+            backgroundColor: "rgba(0,0,0,0.6)", 
+            zIndex: 9999,
+            overflow: "auto"
+          }}
+          onClick={closeEditModal}
+        >
+          <div 
+            className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
+            style={{ pointerEvents: "none" }}
+          >
+            <div 
+              className="modal-content" 
+              style={{ pointerEvents: "auto" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header bg-primary text-white">
+                <h5 className="modal-title">
+                  <i className="bi bi-pencil-square me-2"></i>
+                  Edit Business Information
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={closeEditModal}
+                ></button>
+              </div>
+
+              <div className="modal-body">
+                <form onSubmit={handleEditSubmit}>
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Company Name *</label>
+                      <input
+                        type="text"
+                        name="companyName"
+                        className="form-control"
+                        value={editForm.companyName}
+                        onChange={handleEditChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Owner Name *</label>
+                      <input
+                        type="text"
+                        name="ownerName"
+                        className="form-control"
+                        value={editForm.ownerName}
+                        onChange={handleEditChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Email *</label>
+                      <input
+                        type="email"
+                        name="email"
+                        className="form-control"
+                        value={editForm.email}
+                        onChange={handleEditChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Phone *</label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        className="form-control"
+                        value={editForm.phone}
+                        onChange={handleEditChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">WhatsApp</label>
+                      <input
+                        type="tel"
+                        name="whatsapp"
+                        className="form-control"
+                        value={editForm.whatsapp}
+                        onChange={handleEditChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Year Established</label>
+                      <input
+                        type="number"
+                        name="yearEstablished"
+                        className="form-control"
+                        value={editForm.yearEstablished}
+                        onChange={handleEditChange}
+                      />
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label">Factory Address *</label>
+                      <input
+                        type="text"
+                        name="factoryAddress"
+                        className="form-control"
+                        value={editForm.factoryAddress}
+                        onChange={handleEditChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Chamber Member ID *</label>
+                      <input
+                        type="text"
+                        name="memberId"
+                        className="form-control"
+                        value={editForm.memberId}
+                        onChange={handleEditChange}
+                        required
+                      />
+                      <small className="text-muted">
+                        {businessInfo.status === "approved" && editForm.memberId !== businessInfo.memberId && (
+                          <span className="text-warning">
+                            <i className="bi bi-exclamation-triangle me-1"></i>
+                            Changing Member ID will reset verification status to Pending.
+                          </span>
+                        )}
+                      </small>
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Category *</label>
+                      <select
+                        name="category"
+                        className="form-select"
+                        value={editForm.category}
+                        onChange={handleEditChange}
+                        required
+                      >
+                        <option value="">Select Category</option>
+                        <option value="sports">Sports Goods</option>
+                        <option value="leather">Leather Products</option>
+                        <option value="surgical">Surgical Instruments</option>
+                        <option value="textile">Textile & Apparel</option>
+                        <option value="safety">Safety Equipment</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label">Products</label>
+                      <input
+                        type="text"
+                        name="products"
+                        className="form-control"
+                        value={editForm.products}
+                        onChange={handleEditChange}
+                        placeholder="e.g., Footballs, Leather Jackets"
+                      />
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label">Description</label>
+                      <textarea
+                        name="description"
+                        className="form-control"
+                        rows="3"
+                        value={editForm.description}
+                        onChange={handleEditChange}
+                        placeholder="Describe your business..."
+                      ></textarea>
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label">Website</label>
+                      <input
+                        type="url"
+                        name="website"
+                        className="form-control"
+                        value={editForm.website}
+                        onChange={handleEditChange}
+                        placeholder="https://yourwebsite.com"
+                      />
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label">Social Media</label>
+                    </div>
+
+                    <div className="col-md-6">
+                      <input
+                        type="url"
+                        name="facebook"
+                        className="form-control"
+                        placeholder="Facebook"
+                        value={editForm.facebook}
+                        onChange={handleEditChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <input
+                        type="url"
+                        name="instagram"
+                        className="form-control"
+                        placeholder="Instagram"
+                        value={editForm.instagram}
+                        onChange={handleEditChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <input
+                        type="url"
+                        name="twitter"
+                        className="form-control"
+                        placeholder="Twitter"
+                        value={editForm.twitter}
+                        onChange={handleEditChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <input
+                        type="url"
+                        name="tiktok"
+                        className="form-control"
+                        placeholder="TikTok"
+                        value={editForm.tiktok}
+                        onChange={handleEditChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <input
+                        type="url"
+                        name="pinterest"
+                        className="form-control"
+                        placeholder="Pinterest"
+                        value={editForm.pinterest}
+                        onChange={handleEditChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="modal-footer mt-3">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={closeEditModal}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={editLoading}
+                    >
+                      {editLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-check-circle me-2"></i>
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== INQUIRY LIST MODAL ===== */}
+      <div className="modal fade" id="inquiryModal" tabIndex="-1" data-bs-backdrop="static">
         <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
           <div className="modal-content">
             <div className="modal-header bg-primary text-white">
@@ -925,15 +1492,26 @@ function BusinessProfile() {
         </div>
       </div>
 
-      {/* INQUIRY DETAIL MODAL */}
-      {selectedInquiry && (
+      {/* ===== INQUIRY DETAIL MODAL ===== */}
+      {showDetailModal && selectedInquiry && (
         <div
           className="modal fade show d-block"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9999 }}
-          onClick={() => setShowInquiryModal(false)}
+          style={{ 
+            backgroundColor: "rgba(0,0,0,0.6)", 
+            zIndex: 9999,
+            overflow: "auto"
+          }}
+          onClick={closeDetailModal}
         >
-          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div 
+            className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
+            style={{ pointerEvents: "none" }}
+          >
+            <div 
+              className="modal-content" 
+              style={{ pointerEvents: "auto" }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="modal-header bg-primary text-white">
                 <h5 className="modal-title">
                   {getInquiryTypeIcon(selectedInquiry.inquiryType)} {selectedInquiry.subject}
@@ -941,7 +1519,7 @@ function BusinessProfile() {
                 <button
                   type="button"
                   className="btn-close btn-close-white"
-                  onClick={() => setShowInquiryModal(false)}
+                  onClick={closeDetailModal}
                 ></button>
               </div>
 
@@ -952,7 +1530,6 @@ function BusinessProfile() {
                   </div>
                 ) : (
                   <>
-                    {/* Customer Info */}
                     <div className="row mb-3">
                       <div className="col-md-6">
                         <strong>Customer:</strong>
@@ -978,7 +1555,6 @@ function BusinessProfile() {
 
                     <hr />
 
-                    {/* Product Info */}
                     <div className="row mb-3">
                       <div className="col-md-6">
                         <strong>Product:</strong>
@@ -1000,7 +1576,6 @@ function BusinessProfile() {
 
                     <hr />
 
-                    {/* Message */}
                     <div className="mb-3">
                       <strong>Message:</strong>
                       <div className="bg-light p-3 rounded mt-1">
@@ -1008,7 +1583,6 @@ function BusinessProfile() {
                       </div>
                     </div>
 
-                    {/* Responses */}
                     {selectedInquiry.responses && selectedInquiry.responses.length > 0 && (
                       <>
                         <hr />
@@ -1032,21 +1606,26 @@ function BusinessProfile() {
                       </>
                     )}
 
-                    {/* Reply Form */}
                     {selectedInquiry.status !== "resolved" && (
                       <>
                         <hr />
                         <h6>Reply to Customer:</h6>
-                        <div className="input-group">
+                        <div className="mb-3">
+                          <label className="form-label fw-bold">Your Reply:</label>
                           <textarea
                             className="form-control"
-                            rows="3"
+                            rows="4"
                             placeholder="Type your reply here..."
                             value={replyMessage}
                             onChange={(e) => setReplyMessage(e.target.value)}
+                            style={{ 
+                              resize: "vertical",
+                              backgroundColor: "#fff",
+                              color: "#000"
+                            }}
                           ></textarea>
                         </div>
-                        <div className="mt-2 d-flex gap-2">
+                        <div className="d-flex gap-2 flex-wrap">
                           <button
                             className="btn btn-primary"
                             onClick={sendReply}
@@ -1079,6 +1658,13 @@ function BusinessProfile() {
                         </div>
                       </>
                     )}
+
+                    {selectedInquiry.status === "resolved" && (
+                      <div className="alert alert-success mt-3">
+                        <i className="bi bi-check-circle me-2"></i>
+                        This inquiry has been resolved.
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -1086,7 +1672,7 @@ function BusinessProfile() {
               <div className="modal-footer">
                 <button
                   className="btn btn-secondary"
-                  onClick={() => setShowInquiryModal(false)}
+                  onClick={closeDetailModal}
                 >
                   Close
                 </button>
@@ -1205,10 +1791,9 @@ function BusinessProfile() {
                     multiple
                     onChange={handleImageSelect}
                   />
-                  <small className="text-muted">You can select up to 5 images. All images must be real (no AI generated images allowed)</small>
+                  <small className="text-muted">You can select up to 5 images.</small>
                 </div>
 
-                {/* Existing Images Preview (Edit Mode) */}
                 {editId && existingImages.length > 0 && !editImageChanged && (
                   <div className="col-12">
                     <label className="fw-semibold">Current Images (Click to zoom):</label>
@@ -1234,7 +1819,6 @@ function BusinessProfile() {
                   </div>
                 )}
 
-                {/* New Images Preview */}
                 {imagePreviews.length > 0 && (
                   <div className="col-12">
                     <label className="fw-semibold">New Images:</label>

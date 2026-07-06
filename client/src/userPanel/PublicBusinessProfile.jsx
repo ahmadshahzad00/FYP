@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import UserHeader from "./UserHeader";
 import UserFooter from "./UserFooter";
+import ComplaintProduct from "../userPanel/ComplaintProduct";
 
 function PublicBusinessProfile() {
   const { id } = useParams();
@@ -34,9 +35,11 @@ function PublicBusinessProfile() {
       );
 
       if (businessResponse.data.success) {
-        setBusiness(businessResponse.data.business);
+        const businessData = businessResponse.data.business;
+        setBusiness(businessData);
       } else {
         setError("Business not found");
+        setLoading(false);
         return;
       }
 
@@ -46,7 +49,7 @@ function PublicBusinessProfile() {
         );
 
         if (productsResponse.data.success) {
-          setProducts(productsResponse.data.products);
+          setProducts(productsResponse.data.products || []);
         }
       } catch (productError) {
         setProducts([]);
@@ -101,6 +104,37 @@ function PublicBusinessProfile() {
       }
     }
     return stars;
+  };
+
+  // Get status badge
+  const getStatusBadge = () => {
+    if (!business) return null;
+    
+    switch(business.status) {
+      case "approved":
+        return (
+          <span className="badge bg-success">
+            <i className="bi bi-patch-check-fill me-1"></i>
+            Verified
+          </span>
+        );
+      case "pending":
+        return (
+          <span className="badge bg-warning text-dark">
+            <i className="bi bi-clock me-1"></i>
+            Pending
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="badge bg-danger">
+            <i className="bi bi-x-circle me-1"></i>
+            Not Verified
+          </span>
+        );
+      default:
+        return null;
+    }
   };
 
   if (loading) {
@@ -165,26 +199,17 @@ function PublicBusinessProfile() {
               )}
             </div>
             <div>
-              <h2 className="fw-bold mb-1">{business.companyName}</h2>
-              <p className="mb-2 opacity-75">
+              <h2 className="fw-bold mb-1 text-white">{business.companyName}</h2>
+              <p className="mb-2 opacity-75 text-white">
                 <i className="bi bi-geo-alt me-1"></i>
                 {business.factoryAddress || "Sialkot, Pakistan"}
               </p>
               <div className="d-flex flex-wrap gap-2">
-                <span className="badge bg-success">
-                  <i className="bi bi-patch-check-fill me-1"></i>
-                  Verified Exporter
-                </span>
+                {getStatusBadge()}
                 <span className="badge bg-light text-dark">
                   <i className="bi bi-flag me-1"></i>
                   Made in Pakistan 🇵🇰
                 </span>
-                {business.status === "approved" && (
-                  <span className="badge bg-info">
-                    <i className="bi bi-check-circle me-1"></i>
-                    Approved
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -231,6 +256,10 @@ function PublicBusinessProfile() {
                         {business.memberId || "N/A"}
                       </span>
                     </p>
+                    <p>
+                      <strong>Status:</strong>{" "}
+                      {getStatusBadge()}
+                    </p>
                     {business.products && (
                       <p>
                         <strong>Products:</strong>{" "}
@@ -266,7 +295,6 @@ function PublicBusinessProfile() {
                           <div className="product-image position-relative">
                             {p.images && p.images.length > 0 ? (
                               <>
-                                {/* Main Image */}
                                 <div 
                                   className="position-relative"
                                   style={{ cursor: "pointer" }}
@@ -292,7 +320,6 @@ function PublicBusinessProfile() {
                                       `;
                                     }}
                                   />
-                                  {/* Image count overlay */}
                                   {p.images.length > 1 && (
                                     <div 
                                       className="position-absolute bottom-0 end-0 m-2 bg-dark bg-opacity-75 text-white px-2 py-1 rounded"
@@ -304,7 +331,6 @@ function PublicBusinessProfile() {
                                   )}
                                 </div>
 
-                                {/* Thumbnail Gallery */}
                                 {p.images.length > 1 && (
                                   <div className="d-flex gap-1 p-2 bg-light" style={{ borderBottomLeftRadius: "8px", borderBottomRightRadius: "8px" }}>
                                     {p.images.slice(0, 4).map((img, index) => (
@@ -373,7 +399,6 @@ function PublicBusinessProfile() {
                           </div>
 
                           <div className="card-body">
-                            {/* Product Code */}
                             <div className="mb-2">
                               <span className="badge bg-primary" style={{ fontSize: "11px" }}>
                                 <i className="bi bi-tag me-1"></i>
@@ -410,7 +435,6 @@ function PublicBusinessProfile() {
                               )}
                             </ul>
 
-                            {/* Rating Display */}
                             <div className="mb-2">
                               <div className="d-flex align-items-center gap-1">
                                 {renderStars(p.averageRating || 0)}
@@ -420,17 +444,28 @@ function PublicBusinessProfile() {
                               </div>
                             </div>
 
-                            <div className="d-flex justify-content-between align-items-center">
+                            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
                               <span className="fw-bold text-success fs-5">
                                 Rs. {parseFloat(p.price || 0).toLocaleString()}
                               </span>
-                              <Link
-                                to={`/sendInquiry?product=${p._id}`}
-                                className="btn btn-outline-primary btn-sm"
-                              >
-                                <i className="bi bi-envelope me-1"></i>
-                                Send Inquiry
-                              </Link>
+                              <div className="d-flex gap-2">
+                                <Link
+                                  to={`/sendInquiry?product=${p._id}`}
+                                  className="btn btn-outline-primary btn-sm"
+                                >
+                                  <i className="bi bi-envelope me-1"></i>
+                                  Send Inquiry
+                                </Link>
+                                <ComplaintProduct 
+                                  product={{
+                                    _id: p._id,
+                                    productCode: p.productCode || p._id,
+                                    name: p.name,
+                                    businessId: business._id,
+                                    businessName: business.companyName
+                                  }}
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -477,7 +512,6 @@ function PublicBusinessProfile() {
                   </a>
                 )}
 
-                {/* Social Links */}
                 <div className="mt-3 pt-3 border-top">
                   <h6 className="fw-bold mb-2">Follow on Social Media</h6>
                   <div className="d-flex gap-2 flex-wrap">
@@ -566,6 +600,14 @@ function PublicBusinessProfile() {
                   <strong>Member Since:</strong>{" "}
                   {new Date(business.createdAt).toLocaleDateString()}
                 </p>
+
+                {/* Status in sidebar */}
+                <div className="mt-3 pt-3 border-top">
+                  <h6 className="fw-bold mb-2">Verification Status</h6>
+                  <div className="d-flex align-items-center gap-2">
+                    {getStatusBadge()}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

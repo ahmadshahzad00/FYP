@@ -35,6 +35,7 @@ import PicTest from './userPanel/PicTest';
 import NewPassword from './userPanel/NewPassword';
 import ForgetPassword from './userPanel/ForgetPassword';
 import CategoriesPage from "./userPanel/CategoriesPage";
+// impot ComplaintProduct from "./userPanel/ComplaintProduct";
 
 function App() {
   return (
@@ -67,6 +68,7 @@ function App() {
         <Route path="/reset-password/:token" element={<NewPassword />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/products" element={<CategoriesPage />} />
+        {/* <Route path="/complaint-product" element={<ComplaintProduct />} /> */}
 
         {/* ================= ADMIN ROUTES ================= */}
         <Route path="/admin-login" element={<AdminSignin />} />

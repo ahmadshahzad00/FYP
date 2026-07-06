@@ -13,6 +13,7 @@ function BusinessRequests() {
   const [searchField, setSearchField] = useState("company");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reverifyLoading, setReverifyLoading] = useState(false);
 
   const fetchRequests = async () => {
     try {
@@ -39,8 +40,8 @@ function BusinessRequests() {
         }
       );
       
-      setRequests(res.data);
-      setFilteredRequests(res.data);
+      setRequests(res.data.data || res.data);
+      setFilteredRequests(res.data.data || res.data);
     } catch (err) {
       console.error("Error fetching requests:", err);
       
@@ -92,6 +93,8 @@ function BusinessRequests() {
           return request.memberId?.toLowerCase().includes(searchLower);
         case "status":
           return request.status?.toLowerCase().includes(searchLower);
+        case "verified":
+          return request.verificationDetails?.verified?.toString().includes(searchLower);
         default:
           return request.companyName?.toLowerCase().includes(searchLower);
       }
@@ -135,6 +138,7 @@ function BusinessRequests() {
       );
       
       fetchRequests();
+      alert(`Business ${status === 'approved' ? 'approved' : 'rejected'} successfully!`);
     } catch (err) {
       console.error(err);
       
@@ -146,6 +150,46 @@ function BusinessRequests() {
       } else {
         alert(err.response?.data?.message || err.response?.data?.msg || "Failed to update status");
       }
+    }
+  };
+
+  const handleReverify = async (id) => {
+    if (!window.confirm("Are you sure you want to re-verify this business member ID?")) return;
+    
+    setReverifyLoading(true);
+    try {
+      const token = localStorage.getItem("adminToken");
+      
+      if (!token) {
+        alert("Please login again");
+        window.location.href = "/admin-login";
+        return;
+      }
+      
+      const response = await axios.post(
+        `http://localhost:5000/api/business/${id}/reverify`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      if (response.data.success) {
+        alert(`✅ ${response.data.msg}`);
+        await fetchRequests();
+        // Update selected if modal is open
+        if (selected && selected._id === id) {
+          const updated = requests.find(r => r._id === id);
+          if (updated) setSelected(updated);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.msg || "Failed to re-verify business");
+    } finally {
+      setReverifyLoading(false);
     }
   };
 
@@ -167,6 +211,14 @@ function BusinessRequests() {
         return "bg-danger";
       default:
         return "bg-warning text-dark";
+    }
+  };
+
+  const getVerificationBadge = (verified) => {
+    if (verified) {
+      return <span className="badge bg-success"><i className="bi bi-check-circle me-1"></i>Verified</span>;
+    } else {
+      return <span className="badge bg-danger"><i className="bi bi-x-circle me-1"></i>Not Verified</span>;
     }
   };
 
@@ -253,6 +305,7 @@ function BusinessRequests() {
                   <option value="phone">Phone</option>
                   <option value="memberId">Member ID</option>
                   <option value="status">Status</option>
+                  <option value="verified">Verification</option>
                 </select>
               </div>
               <div className="col-md-7">
@@ -357,6 +410,7 @@ function BusinessRequests() {
                     <th>Phone</th>
                     <th>Member ID</th>
                     <th>Status</th>
+                    <th>Verification</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -379,27 +433,47 @@ function BusinessRequests() {
                         </span>
                       </td>
                       <td>
+                        {getVerificationBadge(r.verificationDetails?.verified)}
+                        {r.verificationDetails?.message && (
+                          <small className="d-block text-muted" style={{ fontSize: "10px" }}>
+                            {r.verificationDetails.message}
+                          </small>
+                        )}
+                      </td>
+                      <td>
                         <button
-                          className="btn btn-sm btn-primary me-2"
+                          className="btn btn-sm btn-primary me-1 mb-1"
                           onClick={() => handleView(r)}
+                          title="View Details"
                         >
-                          <i className="bi bi-eye"></i> View
+                          <i className="bi bi-eye"></i>
+                        </button>
+
+                        <button
+                          className="btn btn-sm btn-info me-1 mb-1"
+                          onClick={() => handleReverify(r._id)}
+                          disabled={reverifyLoading}
+                          title="Re-verify Member ID"
+                        >
+                          <i className="bi bi-arrow-repeat"></i>
                         </button>
 
                         {r.status === "pending" && (
                           <>
                             <button
-                              className="btn btn-sm btn-success me-2"
+                              className="btn btn-sm btn-success me-1 mb-1"
                               onClick={() => handleAction(r._id, "approved")}
+                              title="Approve"
                             >
-                              <i className="bi bi-check-lg"></i> Approve
+                              <i className="bi bi-check-lg"></i>
                             </button>
 
                             <button
-                              className="btn btn-sm btn-danger"
+                              className="btn btn-sm btn-danger mb-1"
                               onClick={() => handleAction(r._id, "rejected")}
+                              title="Reject"
                             >
-                              <i className="bi bi-x-lg"></i> Reject
+                              <i className="bi bi-x-lg"></i>
                             </button>
                           </>
                         )}
@@ -438,18 +512,22 @@ function BusinessRequests() {
         </div>
       </div>
 
-      {/* ================= MODAL ================= */}
+      {/* ================= DETAIL MODAL ================= */}
       {showModal && selected && (
         <div
           className="modal fade show d-block"
-          style={{ background: "rgba(0,0,0,0.5)" }}
+          style={{ background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
+          onClick={closeModal}
         >
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content">
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
 
               {/* HEADER */}
               <div className="modal-header bg-dark text-white">
-                <h5 className="modal-title">{selected.companyName}</h5>
+                <h5 className="modal-title">
+                  <i className="bi bi-building me-2"></i>
+                  {selected.companyName}
+                </h5>
                 <button className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
 
@@ -522,16 +600,42 @@ function BusinessRequests() {
 
                   <div className="col-12">
                     <strong>Description</strong>
-                    <p>{selected.description}</p>
+                    <p>{selected.description || "No description provided"}</p>
                   </div>
 
                   {/* Status Badge */}
-                  <div className="col-12">
+                  <div className="col-md-6">
                     <strong>Status</strong>
                     <div className="mt-1">
                       <span className={`badge ${getStatusBadgeClass(selected.status)} fs-6`}>
                         {selected.status}
                       </span>
+                    </div>
+                  </div>
+
+                  {/* Verification Status */}
+                  <div className="col-md-6">
+                    <strong>Verification</strong>
+                    <div className="mt-1">
+                      {getVerificationBadge(selected.verificationDetails?.verified)}
+                      {selected.verificationDetails?.message && (
+                        <p className="text-muted small mt-1 mb-0">
+                          <i className="bi bi-info-circle me-1"></i>
+                          {selected.verificationDetails.message}
+                        </p>
+                      )}
+                      {selected.verificationDetails?.verifiedAt && (
+                        <p className="text-muted small mt-1 mb-0">
+                          <i className="bi bi-clock me-1"></i>
+                          Verified on: {new Date(selected.verificationDetails.verifiedAt).toLocaleString()}
+                        </p>
+                      )}
+                      {selected.verificationDetails?.verifiedBy && (
+                        <p className="text-muted small mt-1 mb-0">
+                          <i className="bi bi-person me-1"></i>
+                          Verified by: {selected.verificationDetails.verifiedBy}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -576,6 +680,15 @@ function BusinessRequests() {
 
               {/* FOOTER */}
               <div className="modal-footer">
+                <button
+                  className="btn btn-info me-auto"
+                  onClick={() => handleReverify(selected._id)}
+                  disabled={reverifyLoading}
+                >
+                  <i className="bi bi-arrow-repeat me-1"></i>
+                  {reverifyLoading ? "Verifying..." : "Re-verify Member ID"}
+                </button>
+
                 <button className="btn btn-secondary" onClick={closeModal}>
                   Close
                 </button>

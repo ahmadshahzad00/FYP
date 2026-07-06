@@ -41,6 +41,7 @@ function AdminDashBoard() {
 
   const fetchStats = async (token) => {
     try {
+      // Fetch businesses
       const businessResponse = await axios.get(
         "http://localhost:5000/api/business/all",
         {
@@ -50,20 +51,78 @@ function AdminDashBoard() {
         }
       );
       
-      const businesses = businessResponse.data;
+      // Handle different response formats
+      let businesses = [];
+      if (businessResponse.data) {
+        // Check if data is in response.data.data or directly in response.data
+        if (businessResponse.data.data && Array.isArray(businessResponse.data.data)) {
+          businesses = businessResponse.data.data;
+        } else if (Array.isArray(businessResponse.data)) {
+          businesses = businessResponse.data;
+        } else if (businessResponse.data.businesses && Array.isArray(businessResponse.data.businesses)) {
+          businesses = businessResponse.data.businesses;
+        } else {
+          // Try to extract from response
+          businesses = Object.values(businessResponse.data).find(val => Array.isArray(val)) || [];
+        }
+      }
+      
+      console.log("Businesses data:", businesses);
+      
       const totalBusinesses = businesses.length;
       const approvedBusinesses = businesses.filter(b => b.status === "approved").length;
       const pendingBusinesses = businesses.filter(b => b.status === "pending").length;
       const rejectedBusinesses = businesses.filter(b => b.status === "rejected").length;
       
+      // Fetch products
       let totalProducts = 0;
       try {
+        // Try to get products count from your product endpoint
         const productResponse = await axios.get(
           "http://localhost:5000/api/product/products-with-business"
         );
-        totalProducts = productResponse.data.count || 0;
+        
+        if (productResponse.data) {
+          if (productResponse.data.count !== undefined) {
+            totalProducts = productResponse.data.count;
+          } else if (productResponse.data.products && Array.isArray(productResponse.data.products)) {
+            totalProducts = productResponse.data.products.length;
+          } else if (productResponse.data.data && Array.isArray(productResponse.data.data)) {
+            totalProducts = productResponse.data.data.length;
+          } else if (Array.isArray(productResponse.data)) {
+            totalProducts = productResponse.data.length;
+          }
+        }
       } catch (productError) {
-        // Product endpoint might not exist, keep default
+        console.log("Product endpoint not found, using fallback");
+        
+        // Fallback: Try to get products from business products field
+        try {
+          let allProducts = [];
+          for (const business of businesses) {
+            try {
+              const prodRes = await axios.get(
+                `http://localhost:5000/api/product/products/${business._id}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              );
+              
+              if (prodRes.data && prodRes.data.products && Array.isArray(prodRes.data.products)) {
+                allProducts = allProducts.concat(prodRes.data.products);
+              } else if (Array.isArray(prodRes.data)) {
+                allProducts = allProducts.concat(prodRes.data);
+              }
+            } catch (e) {
+              // Skip if business has no products
+            }
+          }
+          totalProducts = allProducts.length;
+        } catch (fallbackError) {
+          console.log("Fallback product fetch failed");
+        }
       }
       
       setStats({
@@ -86,6 +145,14 @@ function AdminDashBoard() {
         localStorage.removeItem("adminData");
         navigate("/admin-login");
       }
+    }
+  };
+
+  // Refresh stats manually
+  const refreshStats = async () => {
+    const token = localStorage.getItem("adminToken");
+    if (token) {
+      await fetchStats(token);
     }
   };
 
@@ -113,12 +180,21 @@ function AdminDashBoard() {
           <div>
             <h2 className="fw-bold text-primary">Admin Dashboard</h2>
             <p className="text-muted mb-0">
-              Welcome back, {admin?.firstname} {admin?.lastname}!
+              Welcome back, {admin?.firstname || admin?.name || "Admin"}!
             </p>
           </div>
-          <div className="text-muted">
-            <i className="bi bi-calendar3 me-1"></i>
-            {new Date().toLocaleDateString()}
+          <div>
+            <button 
+              className="btn btn-outline-primary btn-sm me-2"
+              onClick={refreshStats}
+            >
+              <i className="bi bi-arrow-clockwise me-1"></i>
+              Refresh
+            </button>
+            <span className="text-muted">
+              <i className="bi bi-calendar3 me-1"></i>
+              {new Date().toLocaleDateString()}
+            </span>
           </div>
         </div>
 
@@ -196,8 +272,8 @@ function AdminDashBoard() {
                         <strong className="fs-5">{stats.products.total}</strong>
                       </div>
                       <div className="text-center">
-                        <small className="text-muted d-block">Categories</small>
-                        <strong className="fs-5">-</strong>
+                        <small className="text-muted d-block">Businesses</small>
+                        <strong className="fs-5">{stats.businesses.total}</strong>
                       </div>
                     </div>
                   </div>
@@ -235,7 +311,7 @@ function AdminDashBoard() {
                     </Link>
                   </div>
                   <div className="col-md-4">
-                    <Link to="/businessList" 
+                    <Link to="/adminProfile" 
                       className="btn btn-outline-info w-100 py-3"
                     >
                       <i className="bi bi-person fs-4 d-block mb-2"></i>

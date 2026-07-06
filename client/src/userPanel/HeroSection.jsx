@@ -29,10 +29,24 @@ function HeroSection() {
         }
       );
       
-      if (response.data && response.data.status === "approved") {
+      console.log("Business response:", response.data);
+      
+      // Handle different response formats
+      let businessData = response.data;
+      
+      // If response has business object
+      if (response.data.business) {
+        businessData = response.data.business;
+      }
+      
+      // Check if business exists (any status)
+      if (businessData && businessData.status) {
         setHasBusiness(true);
+      } else {
+        setHasBusiness(false);
       }
     } catch (error) {
+      console.error("Error checking business:", error);
       setHasBusiness(false);
     } finally {
       setLoading(false);
@@ -118,31 +132,7 @@ function HeroSection() {
                   <h3 className="fw-bold text-white mb-0">1000+</h3>
                   <small className="opacity-75">Premium Products</small>
                 </div>
-                {/* <div>
-                  <h3 className="fw-bold text-white mb-0">50+</h3>
-                  <small className="opacity-75">Export Countries</small>
-                </div> */}
               </div>
-
-              {/* CTA Buttons */}
-              {/* <div className="d-flex flex-wrap gap-3">
-                <Link
-                  to="/products"
-                  className="btn btn-warning btn-lg px-5 shadow-lg"
-                  style={{ fontWeight: "600" }}
-                >
-                  <i className="bi bi-grid-3x3-gap-fill me-2"></i>
-                  Explore Products
-                </Link>
-                <Link
-                  to="/business-register"
-                  className="btn btn-outline-light btn-lg px-5"
-                  style={{ fontWeight: "600" }}
-                >
-                  <i className="bi bi-building me-2"></i>
-                  Join as Exporter
-                </Link>
-              </div> */}
             </div>
 
             {/* Right Side - Image/Illustration */}
@@ -192,58 +182,54 @@ function HeroSection() {
         </div>
       </section>
 
-      {/* CTA Section - Only show if user doesn't have a business account */}
-      {!loading && !hasBusiness && (
-        <section className="py-5" style={{ backgroundColor: "#f8f9fa" }}>
+      {/* CTA Section - Shows based on business status */}
+      {!loading && (
+        <section className="py-5" style={{ backgroundColor: hasBusiness ? "#e8f5e9" : "#f8f9fa" }}>
           <div className="container">
             <div className="row align-items-center">
               <div className="col-lg-7">
-                <h3 className="fw-bold mb-2">
-                  <i className="bi bi-rocket-takeoff text-primary me-2"></i>
-                  Are you a Manufacturer or Exporter?
-                </h3>
-                <p className="text-muted mb-0">
-                  Register your business on <strong>Sialkot Export Mella</strong> and
-                  showcase your products to buyers around the world. Join 100+ trusted exporters today!
-                </p>
+                {hasBusiness ? (
+                  <>
+                    <h3 className="fw-bold text-success mb-2">
+                      <i className="bi bi-check-circle-fill me-2"></i>
+                      Welcome to Your Business Dashboard!
+                    </h3>
+                    <p className="text-muted mb-0">
+                      Manage your products, view inquiries, and grow your business on 
+                      <strong> Sialkot Export Mella</strong>.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="fw-bold mb-2">
+                      <i className="bi bi-rocket-takeoff text-primary me-2"></i>
+                      Are you a Manufacturer or Exporter?
+                    </h3>
+                    <p className="text-muted mb-0">
+                      Register your business on <strong>Sialkot Export Mella</strong> and
+                      showcase your products to buyers around the world. Join 100+ trusted exporters today!
+                    </p>
+                  </>
+                )}
               </div>
               <div className="col-lg-5 text-lg-end mt-3 mt-lg-0">
-                <Link
-                  to="/business-register"
-                  className="btn btn-primary btn-lg px-5 shadow"
-                >
-                  <i className="bi bi-building-add me-2"></i>
-                  Register Your Business
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Business Dashboard CTA */}
-      {!loading && hasBusiness && (
-        <section className="py-5" style={{ backgroundColor: "#e8f5e9" }}>
-          <div className="container">
-            <div className="row align-items-center">
-              <div className="col-lg-7">
-                <h3 className="fw-bold text-success mb-2">
-                  <i className="bi bi-check-circle-fill me-2"></i>
-                  Welcome to Your Business Dashboard!
-                </h3>
-                <p className="text-muted mb-0">
-                  Manage your products, view inquiries, and grow your business on 
-                  <strong> Sialkot Export Mella</strong>.
-                </p>
-              </div>
-              <div className="col-lg-5 text-lg-end mt-3 mt-lg-0">
-                <Link
-                  to="/business-profile"
-                  className="btn btn-success btn-lg px-5 shadow"
-                >
-                  <i className="bi bi-speedometer2 me-2"></i>
-                  Go to Dashboard
-                </Link>
+                {hasBusiness ? (
+                  <Link
+                    to="/business-profile"
+                    className="btn btn-success btn-lg px-5 shadow"
+                  >
+                    <i className="bi bi-speedometer2 me-2"></i>
+                    Go to Dashboard
+                  </Link>
+                ) : (
+                  <Link
+                    to="/business-register"
+                    className="btn btn-primary btn-lg px-5 shadow"
+                  >
+                    <i className="bi bi-building-add me-2"></i>
+                    Register Your Business
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -255,7 +241,6 @@ function HeroSection() {
         <div className="container">
           <div className="text-center mb-5">
             <h2 className="fw-bold display-6">
-              {/* <i className="bi bi-star-fill text-warning me-2"></i> */}
               Famous Products Made in Sialkot
             </h2>
             <p className="text-muted">
@@ -274,13 +259,13 @@ function HeroSection() {
                 <p className="text-muted">
                   International-standard hand-stitched footballs exported worldwide.
                 </p>
-                <button 
+                <Link
+                  to="/products?category=football" 
                   className="btn btn-outline-primary mt-auto"
-                  onClick={() => window.location.href = "/products?category=sports"}
                 >
                   Explore Businesses
                   <i className="bi bi-arrow-right ms-2"></i>
-                </button>
+                </Link>
               </div>
             </div>
 
@@ -294,17 +279,17 @@ function HeroSection() {
                 <p className="text-muted">
                   Premium leather garments crafted with excellence and durability.
                 </p>
-                <button 
+                <Link
+                  to="/products?category=leather"
                   className="btn btn-outline-warning mt-auto"
-                  onClick={() => window.location.href = "/products?category=leather"}
                 >
                   Explore Businesses
                   <i className="bi bi-arrow-right ms-2"></i>
-                </button>
+                </Link>
               </div>
             </div>
 
-            {/* Sports Gloves */}
+            {/* Surgical Instruments */}
             <div className="col-md-4">
               <div className="card h-100 shadow-sm border-0 text-center p-4 product-type-card" style={{ transition: "transform 0.3s ease" }}>
                 <div className="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: "80px", height: "80px" }}>
@@ -314,13 +299,13 @@ function HeroSection() {
                 <p className="text-muted">
                   Precision surgical instruments and medical equipment for global healthcare.
                 </p>
-                <button 
+                <Link
+                 to="/products?category=surgical" 
                   className="btn btn-outline-success mt-auto"
-                  onClick={() => window.location.href = "/products?category=surgical"}
                 >
                   Explore Businesses
                   <i className="bi bi-arrow-right ms-2"></i>
-                </button>
+                </Link>
               </div>
             </div>
           </div>
