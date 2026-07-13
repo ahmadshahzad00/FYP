@@ -49,6 +49,22 @@ function BusinessProfile() {
   const [sendingReply, setSendingReply] = useState(false);
   const [inquiryLoading, setInquiryLoading] = useState(false);
   
+  // Complaint states
+  const [complaints, setComplaints] = useState([]);
+  const [complaintStats, setComplaintStats] = useState({
+    total: 0,
+    pending: 0,
+    in_review: 0,
+    in_progress: 0,
+    resolved: 0,
+    closed: 0,
+  });
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [complaintReply, setComplaintReply] = useState("");
+  const [sendingComplaintReply, setSendingComplaintReply] = useState(false);
+  const [complaintLoading, setComplaintLoading] = useState(false);
+  
   // Product form states
   const [form, setForm] = useState({
     images: [],
@@ -119,6 +135,7 @@ function BusinessProfile() {
       
       await fetchProducts(businessId);
       await fetchInquiries();
+      await fetchComplaints();
     } catch (err) {
       console.error("Error fetching business:", err);
       if (err.response?.status === 404) {
@@ -246,7 +263,6 @@ function BusinessProfile() {
       
       if (response.data.success) {
         alert(response.data.msg);
-        // Refresh business data
         await fetchBusiness();
         closeEditModal();
       }
@@ -256,6 +272,173 @@ function BusinessProfile() {
     } finally {
       setEditLoading(false);
     }
+  };
+
+  // ============================================
+  // COMPLAINT FUNCTIONS
+  // ============================================
+  const fetchComplaints = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      
+      const res = await axios.get(
+        "http://localhost:5000/api/complaints/business/my-complaints",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      setComplaints(res.data.data || []);
+      setComplaintStats(res.data.stats || {
+        total: 0,
+        pending: 0,
+        in_review: 0,
+        in_progress: 0,
+        resolved: 0,
+        closed: 0,
+      });
+    } catch (err) {
+      console.error("Error fetching complaints:", err);
+      setComplaints([]);
+      setComplaintStats({
+        total: 0,
+        pending: 0,
+        in_review: 0,
+        in_progress: 0,
+        resolved: 0,
+        closed: 0,
+      });
+    }
+  };
+
+  const viewComplaint = async (id) => {
+    setComplaintLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      
+      const res = await axios.get(
+        `http://localhost:5000/api/complaints/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      setSelectedComplaint(res.data.data);
+      setShowComplaintModal(true);
+      setComplaintReply("");
+      
+      await fetchComplaints();
+    } catch (err) {
+      console.error("Error fetching complaint details:", err);
+      alert(err.response?.data?.message || "Failed to load complaint details");
+    } finally {
+      setComplaintLoading(false);
+    }
+  };
+
+  const closeComplaintModal = () => {
+    setShowComplaintModal(false);
+    setSelectedComplaint(null);
+    setComplaintReply("");
+  };
+
+  const sendComplaintReply = async () => {
+    if (!complaintReply.trim()) {
+      alert("Please enter a reply message");
+      return;
+    }
+
+    setSendingComplaintReply(true);
+    try {
+      const token = localStorage.getItem("token");
+      
+      const res = await axios.post(
+        `http://localhost:5000/api/complaints/${selectedComplaint._id}/reply`,
+        { message: complaintReply },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      setSelectedComplaint(res.data.data);
+      setComplaintReply("");
+      await fetchComplaints();
+      alert("✅ Reply sent successfully!");
+    } catch (err) {
+      console.error("Error sending reply:", err);
+      alert(err.response?.data?.message || "Failed to send reply");
+    } finally {
+      setSendingComplaintReply(false);
+    }
+  };
+
+  const updateComplaintStatus = async (id, status, resolution = "") => {
+    if (!window.confirm(`Mark this complaint as ${status}?`)) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      
+      await axios.put(
+        `http://localhost:5000/api/complaints/${id}/status`,
+        { status, resolution },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      await fetchComplaints();
+      if (selectedComplaint && selectedComplaint._id === id) {
+        setSelectedComplaint({ ...selectedComplaint, status });
+      }
+      alert(`Complaint marked as ${status}!`);
+    } catch (err) {
+      console.error("Error updating complaint status:", err);
+      alert(err.response?.data?.message || "Failed to update status");
+    }
+  };
+
+  const getComplaintTypeLabel = (type) => {
+    const labels = {
+      quality_issue: "Quality Issue",
+      delivery_delay: "Delivery Delay",
+      wrong_product: "Wrong Product",
+      damaged_product: "Damaged Product",
+      quantity_mismatch: "Quantity Mismatch",
+      price_issue: "Price Issue",
+      customer_service: "Customer Service",
+      payment_issue: "Payment Issue",
+      other: "Other",
+    };
+    return labels[type] || type;
+  };
+
+  const getComplaintStatusBadge = (status) => {
+    const badges = {
+      pending: "bg-warning text-dark",
+      in_review: "bg-info text-dark",
+      in_progress: "bg-primary text-white",
+      resolved: "bg-success text-white",
+      closed: "bg-secondary text-white",
+    };
+    return badges[status] || "bg-secondary";
+  };
+
+  const getSeverityBadge = (severity) => {
+    const badges = {
+      low: "bg-success",
+      medium: "bg-warning text-dark",
+      high: "bg-danger",
+      critical: "bg-danger",
+    };
+    return badges[severity] || "bg-secondary";
   };
 
   // ============================================
@@ -778,6 +961,23 @@ function BusinessProfile() {
                     <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                       {inquiryStats.pending}
                       <span className="visually-hidden">new inquiries</span>
+                    </span>
+                  )}
+                </button>
+
+                {/* COMPLAINT BUTTON */}
+                <button
+                  className="btn btn-danger position-relative"
+                  onClick={() => fetchComplaints()}
+                  data-bs-toggle="modal"
+                  data-bs-target="#complaintModal"
+                >
+                  <i className="bi bi-exclamation-triangle me-2"></i>
+                  Complaints
+                  {complaintStats.pending > 0 && (
+                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                      {complaintStats.pending}
+                      <span className="visually-hidden">new complaints</span>
                     </span>
                   )}
                 </button>
@@ -1673,6 +1873,350 @@ function BusinessProfile() {
                 <button
                   className="btn btn-secondary"
                   onClick={closeDetailModal}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== COMPLAINT LIST MODAL ===== */}
+      <div className="modal fade" id="complaintModal" tabIndex="-1" data-bs-backdrop="static">
+        <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+          <div className="modal-content">
+            <div className="modal-header bg-danger text-white">
+              <h5 className="modal-title">
+                <i className="bi bi-exclamation-triangle me-2"></i>
+                Product Complaints
+                {complaintStats.pending > 0 && (
+                  <span className="badge bg-warning text-dark ms-2">{complaintStats.pending} new</span>
+                )}
+              </h5>
+              <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div className="modal-body">
+              {complaints.length === 0 ? (
+                <div className="text-center py-5">
+                  <i className="bi bi-inbox fs-1 text-muted"></i>
+                  <p className="text-muted mt-2">No complaints received yet</p>
+                </div>
+              ) : (
+                <div className="list-group">
+                  {complaints.map((complaint) => (
+                    <div
+                      key={complaint._id}
+                      className={`list-group-item list-group-item-action ${
+                        complaint.status === "pending" ? "border-start border-danger border-4" : ""
+                      }`}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div className="flex-grow-1">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="fs-5">
+                              {complaint.complaintType === "damaged_product" ? "📦" :
+                               complaint.complaintType === "quality_issue" ? "🔧" :
+                               complaint.complaintType === "delivery_delay" ? "⏰" :
+                               complaint.complaintType === "wrong_product" ? "❌" :
+                               complaint.complaintType === "payment_issue" ? "💳" : "⚠️"}
+                            </span>
+                            <h6 className="mb-0">
+                              {complaint.subject}
+                              {complaint.status === "pending" && (
+                                <span className="badge bg-danger ms-2">New</span>
+                              )}
+                            </h6>
+                          </div>
+                          <small className="text-muted">
+                            <i className="bi bi-person me-1"></i>
+                            {complaint.customerName} • 
+                            <i className="bi bi-envelope ms-2 me-1"></i>
+                            {complaint.customerEmail}
+                          </small>
+                          <div className="mt-1">
+                            <small className="text-muted">
+                              Product: {complaint.productName} • 
+                              Type: {getComplaintTypeLabel(complaint.complaintType)}
+                            </small>
+                          </div>
+                          <p className="mb-1 text-truncate" style={{ maxWidth: "400px" }}>
+                            {complaint.description}
+                          </p>
+                        </div>
+                        <div className="text-end ms-3">
+                          <span className={`badge ${getComplaintStatusBadge(complaint.status)}`}>
+                            {complaint.status}
+                          </span>
+                          <br />
+                          <span className={`badge ${getSeverityBadge(complaint.severity)} mt-1`}>
+                            {complaint.severity}
+                          </span>
+                          <br />
+                          <small className="text-muted">
+                            {new Date(complaint.createdAt).toLocaleDateString()}
+                          </small>
+                          <br />
+                          <button
+                            className="btn btn-sm btn-danger mt-1"
+                            onClick={() => viewComplaint(complaint._id)}
+                          >
+                            <i className="bi bi-eye me-1"></i>View
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== COMPLAINT DETAIL MODAL ===== */}
+      {showComplaintModal && selectedComplaint && (
+        <div
+          className="modal fade show d-block"
+          style={{ 
+            backgroundColor: "rgba(0,0,0,0.6)", 
+            zIndex: 9999,
+            overflow: "auto"
+          }}
+          onClick={closeComplaintModal}
+        >
+          <div 
+            className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
+            style={{ pointerEvents: "none" }}
+          >
+            <div 
+              className="modal-content" 
+              style={{ pointerEvents: "auto" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header bg-danger text-white">
+                <h5 className="modal-title">
+                  <i className="bi bi-exclamation-triangle me-2"></i>
+                  Complaint: {selectedComplaint.subject}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={closeComplaintModal}
+                ></button>
+              </div>
+
+              <div className="modal-body">
+                {complaintLoading ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border text-primary"></div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Customer Info */}
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <strong>Customer:</strong>
+                        <p>{selectedComplaint.customerName}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Email:</strong>
+                        <p>{selectedComplaint.customerEmail}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Phone:</strong>
+                        <p>{selectedComplaint.customerPhone}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Status:</strong>
+                        <p>
+                          <span className={`badge ${getComplaintStatusBadge(selectedComplaint.status)}`}>
+                            {selectedComplaint.status}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <hr />
+
+                    {/* Product Info */}
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <strong>Product:</strong>
+                        <p>{selectedComplaint.productName}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Complaint Type:</strong>
+                        <p>{getComplaintTypeLabel(selectedComplaint.complaintType)}</p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Severity:</strong>
+                        <p>
+                          <span className={`badge ${getSeverityBadge(selectedComplaint.severity)}`}>
+                            {selectedComplaint.severity}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Date:</strong>
+                        <p>{new Date(selectedComplaint.createdAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    <hr />
+
+                    {/* Description */}
+                    <div className="mb-3">
+                      <strong>Description:</strong>
+                      <div className="bg-light p-3 rounded mt-1">
+                        {selectedComplaint.description}
+                      </div>
+                    </div>
+
+                    {/* Attachments */}
+                    {selectedComplaint.attachments && selectedComplaint.attachments.length > 0 && (
+                      <>
+                        <hr />
+                        <h6>Attachments:</h6>
+                        <div className="d-flex gap-2 flex-wrap">
+                          {selectedComplaint.attachments.map((file, idx) => (
+                            <a
+                              key={idx}
+                              href={`http://localhost:5000/${file.url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm btn-outline-primary"
+                            >
+                              <i className="bi bi-file-earmark me-1"></i>
+                              {file.name}
+                            </a>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Responses */}
+                    {selectedComplaint.responses && selectedComplaint.responses.length > 0 && (
+                      <>
+                        <hr />
+                        <h6>Responses:</h6>
+                        {selectedComplaint.responses.map((response, idx) => (
+                          <div
+                            key={idx}
+                            className={`p-2 rounded mb-2 ${
+                              response.sender === "business_owner"
+                                ? "bg-primary text-white"
+                                : response.sender === "admin"
+                                ? "bg-info text-white"
+                                : "bg-secondary text-white"
+                            }`}
+                          >
+                            <small>
+                              {response.sender === "business_owner" ? "You" : 
+                               response.sender === "admin" ? "Admin" : "Customer"} • 
+                              {new Date(response.createdAt).toLocaleString()}
+                            </small>
+                            <p className="mb-0">{response.message}</p>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Resolution */}
+                    {selectedComplaint.resolution && (
+                      <>
+                        <hr />
+                        <div className="alert alert-success">
+                          <strong>Resolution:</strong>
+                          <p className="mb-0">{selectedComplaint.resolution}</p>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Reply Form */}
+                    {selectedComplaint.status !== "closed" && selectedComplaint.status !== "resolved" && (
+                      <>
+                        <hr />
+                        <h6>Reply to Customer:</h6>
+                        <div className="mb-3">
+                          <label className="form-label fw-bold">Your Reply:</label>
+                          <textarea
+                            className="form-control"
+                            rows="4"
+                            placeholder="Type your reply here..."
+                            value={complaintReply}
+                            onChange={(e) => setComplaintReply(e.target.value)}
+                            style={{ 
+                              resize: "vertical",
+                              backgroundColor: "#fff",
+                              color: "#000"
+                            }}
+                          ></textarea>
+                        </div>
+                        <div className="d-flex gap-2 flex-wrap">
+                          <button
+                            className="btn btn-danger"
+                            onClick={sendComplaintReply}
+                            disabled={sendingComplaintReply}
+                          >
+                            {sendingComplaintReply ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                Sending...
+                              </>
+                            ) : (
+                              <i className="bi bi-send me-2"></i>
+                            )}
+                            Send Reply
+                          </button>
+                          <button
+                            className="btn btn-success"
+                            onClick={() => updateComplaintStatus(selectedComplaint._id, "resolved")}
+                          >
+                            <i className="bi bi-check-circle me-2"></i>
+                            Resolve
+                          </button>
+                          <button
+                            className="btn btn-info"
+                            onClick={() => updateComplaintStatus(selectedComplaint._id, "in_progress")}
+                          >
+                            <i className="bi bi-play me-2"></i>
+                            In Progress
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={() => updateComplaintStatus(selectedComplaint._id, "closed")}
+                          >
+                            <i className="bi bi-x-circle me-2"></i>
+                            Close
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {selectedComplaint.status === "resolved" && (
+                      <div className="alert alert-success mt-3">
+                        <i className="bi bi-check-circle me-2"></i>
+                        This complaint has been resolved.
+                      </div>
+                    )}
+
+                    {selectedComplaint.status === "closed" && (
+                      <div className="alert alert-secondary mt-3">
+                        <i className="bi bi-x-circle me-2"></i>
+                        This complaint has been closed.
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  className="btn btn-secondary"
+                  onClick={closeComplaintModal}
                 >
                   Close
                 </button>

@@ -311,7 +311,7 @@ function TrendingProducts() {
       </section>
 
       {/* CTA - Only show if user doesn't have a business account */}
-      {!checkingBusiness && !hasBusiness && (
+      {/* {!checkingBusiness && !hasBusiness && (
         <div className="container my-5">
           <div className="row align-items-center bg-light rounded-4 shadow-sm p-4 p-md-5">
             <div className="col-md-8 text-center text-md-start">
@@ -336,7 +336,7 @@ function TrendingProducts() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Search and Filter Bar */}
       <div className="container my-4">

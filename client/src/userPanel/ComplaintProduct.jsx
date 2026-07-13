@@ -10,10 +10,62 @@ const ComplaintProduct = ({ product, onComplaintSubmitted }) => {
     complaintType: "quality_issue",
     description: "",
     severity: "medium",
+    customerName: "",
+    customerEmail: "",
+    customerPhone: "",
   });
   const [attachments, setAttachments] = useState([]);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [userData, setUserData] = useState(null);
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await axios.get(
+        "http://localhost:5000/api/auth/profile",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        const user = response.data.user;
+        setUserData(user);
+        setFormData(prev => ({
+          ...prev,
+          customerName: user.name || "",
+          customerEmail: user.email || "",
+          customerPhone: user.phone || "",
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      try {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        if (storedUser) {
+          setUserData(storedUser);
+          setFormData(prev => ({
+            ...prev,
+            customerName: storedUser.name || "",
+            customerEmail: storedUser.email || "",
+            customerPhone: storedUser.phone || "",
+          }));
+        }
+      } catch (e) {
+        console.error("Error parsing stored user:", e);
+      }
+    }
+  };
 
   const complaintTypes = [
     { value: "quality_issue", label: "Quality Issue" },
@@ -74,19 +126,11 @@ const ComplaintProduct = ({ product, onComplaintSubmitted }) => {
         return;
       }
 
-      // Validate form
-      if (!formData.subject.trim()) {
-        setError("Subject is required");
+      if (!formData.customerName || !formData.customerEmail) {
+        setError("Customer information is missing. Please refresh and try again.");
         setLoading(false);
         return;
       }
-      if (!formData.description.trim()) {
-        setError("Description is required");
-        setLoading(false);
-        return;
-      }
-
-      console.log("Submitting complaint for product:", product);
 
       const data = new FormData();
       data.append("productId", product._id);
@@ -98,12 +142,13 @@ const ComplaintProduct = ({ product, onComplaintSubmitted }) => {
       data.append("complaintType", formData.complaintType);
       data.append("description", formData.description);
       data.append("severity", formData.severity);
+      data.append("customerName", formData.customerName);
+      data.append("customerEmail", formData.customerEmail);
+      data.append("customerPhone", formData.customerPhone || "N/A");
 
       for (const file of attachments) {
         data.append("attachments", file);
       }
-
-      console.log("Sending request to API...");
 
       const response = await axios.post(
         "http://localhost:5000/api/complaints",
@@ -116,8 +161,6 @@ const ComplaintProduct = ({ product, onComplaintSubmitted }) => {
         }
       );
 
-      console.log("Response:", response.data);
-
       if (response.data.success) {
         setSuccess(true);
         setFormData({
@@ -125,6 +168,9 @@ const ComplaintProduct = ({ product, onComplaintSubmitted }) => {
           complaintType: "quality_issue",
           description: "",
           severity: "medium",
+          customerName: userData?.name || "",
+          customerEmail: userData?.email || "",
+          customerPhone: userData?.phone || "",
         });
         setAttachments([]);
         setTimeout(() => {
@@ -132,24 +178,10 @@ const ComplaintProduct = ({ product, onComplaintSubmitted }) => {
           setSuccess(false);
           if (onComplaintSubmitted) onComplaintSubmitted();
         }, 2000);
-      } else {
-        setError(response.data.message || "Failed to submit complaint");
       }
     } catch (err) {
-      console.error("Full error:", err);
-      console.error("Error response:", err.response);
-      console.error("Error message:", err.message);
-      
-      // Show detailed error message
-      if (err.response) {
-        // Server responded with error
-        setError(err.response.data?.message || err.response.data?.msg || "Server error occurred");
-      } else if (err.request) {
-        // Request made but no response
-        setError("No response from server. Please check your connection.");
-      } else {
-        setError(err.message || "Failed to submit complaint");
-      }
+      console.error("Error submitting complaint:", err);
+      setError(err.response?.data?.message || "Failed to submit complaint");
     } finally {
       setLoading(false);
     }
@@ -176,6 +208,9 @@ const ComplaintProduct = ({ product, onComplaintSubmitted }) => {
       complaintType: "quality_issue",
       description: "",
       severity: "medium",
+      customerName: userData?.name || "",
+      customerEmail: userData?.email || "",
+      customerPhone: userData?.phone || "",
     });
     setAttachments([]);
     setError("");
@@ -258,11 +293,56 @@ const ComplaintProduct = ({ product, onComplaintSubmitted }) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
-              {/* Product Info */}
+              {/* Customer Info */}
               <div className="bg-light p-3 rounded-3 mb-4">
+                <h6 className="fw-bold mb-2">
+                  <i className="bi bi-person me-2"></i>
+                  Your Information
+                </h6>
+                <div className="row g-2">
+                  <div className="col-md-6">
+                    <label className="form-label small">Name</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      name="customerName"
+                      value={formData.customerName}
+                      onChange={handleChange}
+                      required
+                      placeholder="Your full name"
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label small">Email</label>
+                    <input
+                      type="email"
+                      className="form-control form-control-sm"
+                      name="customerEmail"
+                      value={formData.customerEmail}
+                      onChange={handleChange}
+                      required
+                      placeholder="your@email.com"
+                    />
+                  </div>
+                  <div className="col-md-12">
+                    <label className="form-label small">Phone</label>
+                    <input
+                      type="tel"
+                      className="form-control form-control-sm"
+                      name="customerPhone"
+                      value={formData.customerPhone}
+                      onChange={handleChange}
+                      placeholder="Your phone number"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Info */}
+              <div className="bg-primary bg-opacity-10 p-3 rounded-3 mb-4">
                 <div className="d-flex align-items-center gap-3">
-                  <div className="bg-primary bg-opacity-10 rounded-circle p-2">
-                    <i className="bi bi-box text-primary"></i>
+                  <div className="bg-primary rounded-circle p-2">
+                    <i className="bi bi-box text-white"></i>
                   </div>
                   <div>
                     <h6 className="mb-0 fw-bold">{product.name}</h6>
@@ -347,7 +427,7 @@ const ComplaintProduct = ({ product, onComplaintSubmitted }) => {
                   onChange={handleFileChange}
                 />
                 <small className="text-muted">
-                  Max 5 files, 10MB each. Supported: JPG, PNG
+                  Max 5 files, 10MB each. Supported: JPG, PNG, PDF, DOC
                 </small>
                 {attachments.length > 0 && (
                   <div className="mt-2">

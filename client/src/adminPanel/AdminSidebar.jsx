@@ -73,6 +73,11 @@ function AdminSidebar() {
             </Link>
           </li>
           <li className="nav-item">
+            <Link to="/listComplaints" className="nav-link text-white">
+              <i className="bi bi-envelope-paper me-2"></i> Complaints
+            </Link>
+          </li>
+          <li className="nav-item">
             <Link to="/contactMessages" className="nav-link text-white">
               <i className="bi bi-chat-dots me-2"></i> Contact Messages
             </Link>

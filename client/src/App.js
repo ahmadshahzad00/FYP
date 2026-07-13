@@ -15,6 +15,7 @@ import BusinessRequests from "./adminPanel/BusinessRequests";
 import ContactUsList from './adminPanel/ContactUsList';
 import AddTeamMember from './adminPanel/addTeamMember';
 import ListTeamMember from './adminPanel/ListTeamMember';
+import ListComplaints from './adminPanel/ListComplaints';
 
 /* ================= USER ================= */
 import Home from './userPanel/Home';
@@ -82,7 +83,7 @@ function App() {
         <Route path="/contactMessages" element={<ContactUsList />} />
         <Route path="/team-members" element={<AddTeamMember />} />
         <Route path="/team-members-list" element={<ListTeamMember />} />
-
+        <Route path="/listComplaints" element={<ListComplaints />} />
       </Routes>
     </Router>
   );

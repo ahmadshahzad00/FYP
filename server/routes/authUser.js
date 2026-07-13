@@ -127,13 +127,67 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    // ✅ Include user data in response
     res.json({
       message: "Login successful",
       token,
-      user,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+        role: user.role,
+        isVerified: user.isVerified,
+        image: user.image || "",
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+/* ================= GET USER PROFILE ================= */
+router.get("/profile", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secretkey");
+    
+    const user = await User.findById(decoded.id).select("-password");
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+        address: user.address || "",
+        role: user.role,
+        isVerified: user.isVerified,
+        image: user.image || "",
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching profile:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error: " + err.message,
+    });
   }
 });
 
@@ -197,7 +251,7 @@ router.post("/upload-profile", upload.single("image"), async (req, res) => {
 });
 
 /* =========================================================
-   🔥 NEW: FORGOT PASSWORD ROUTE
+   🔥 FORGOT PASSWORD ROUTE
 ========================================================= */
 router.post("/forgot-password", async (req, res) => {
   try {
@@ -236,7 +290,7 @@ router.post("/forgot-password", async (req, res) => {
 });
 
 /* =========================================================
-   🔥 NEW: RESET PASSWORD ROUTE
+   🔥 RESET PASSWORD ROUTE
 ========================================================= */
 router.post("/reset-password", async (req, res) => {
   try {

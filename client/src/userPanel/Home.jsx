@@ -19,9 +19,29 @@ function Home() {
   const [submittingRating, setSubmittingRating] = useState(false);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [userId, setUserId] = useState(null);
 
-  const currentUser = JSON.parse(localStorage.getItem("user"));
-  const userId = currentUser?._id || null;
+  // Get user ID from localStorage properly
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const userData = JSON.parse(localStorage.getItem("user"));
+        if (userData) {
+          // Try different possible ID keys
+          const id = userData._id || userData.id || userData.userId || null;
+          setUserId(id);
+          console.log("User ID set to:", id);
+        } else {
+          console.log("No user data found in localStorage");
+        }
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    } else {
+      console.log("No token found");
+    }
+  }, []);
 
   useEffect(() => {
     fetchProducts();
@@ -89,13 +109,19 @@ function Home() {
     setUserRating(0);
     setReviewText("");
     
+    console.log("Current userId:", userId);
+    
     if (userId && product.ratings) {
       const userExistingRating = product.ratings.find(
-        r => r.userId?._id === userId || r.userId === userId
+        r => {
+          const ratingUserId = r.userId?._id || r.userId || null;
+          return ratingUserId === userId;
+        }
       );
       if (userExistingRating) {
         setUserRating(userExistingRating.rating);
         setReviewText(userExistingRating.review || "");
+        console.log("Found existing rating:", userExistingRating);
       }
     }
   };
@@ -398,7 +424,7 @@ function Home() {
         )}
       </div>
 
-      {/* Product Details Modal - Same as before */}
+      {/* Product Details Modal */}
       <div
         className="modal fade"
         id="productModal"
@@ -567,8 +593,8 @@ function Home() {
                     )}
                   </div>
 
-                  {/* Rating Section */}
-                  {userId && (
+                  {/* Rating Section - Fixed */}
+                  {userId ? (
                     <div className="mt-4 pt-3 border-top">
                       <h6 className="fw-bold">Rate this product</h6>
                       
@@ -616,9 +642,7 @@ function Home() {
                         </div>
                       )}
                     </div>
-                  )}
-
-                  {!userId && (
+                  ) : (
                     <div className="mt-3 alert alert-info">
                       <i className="bi bi-info-circle me-1"></i>
                       <Link to="/user-login">Login</Link> to rate this product

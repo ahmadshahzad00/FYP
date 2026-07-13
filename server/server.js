@@ -40,14 +40,14 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`✅ Server started on port ${PORT}`);
-  console.log(`📋 Routes registered:`);
-  console.log(`   - /api/admin`);
-  console.log(`   - /api/auth`);
-  console.log(`   - /api/business`);
-  console.log(`   - /api/file`);
-  console.log(`   - /api/product`);
-  console.log(`   - /api/contact`);
-  console.log(`   - /api/inquiry`);
-  console.log(`   - /api/team`);
-  console.log(`   - /api/complaints ✅`);
+  // console.log(`📋 Routes registered:`);
+  // console.log(`   - /api/admin`);
+  // console.log(`   - /api/auth`);
+  // console.log(`   - /api/business`);
+  // console.log(`   - /api/file`);
+  // console.log(`   - /api/product`);
+  // console.log(`   - /api/contact`);
+  // console.log(`   - /api/inquiry`);
+  // console.log(`   - /api/team`);
+  // console.log(`   - /api/complaints`);
 });

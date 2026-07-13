@@ -71,8 +71,7 @@ function FAQs() {
                 >
                   <div className="accordion-body text-muted">
                     Companies can register their business, create a profile,
-                    and add products through the dashboard. Currently, the
-                    platform operates as a frontend demo.
+                    and add products through the dashboard. Currently, the platform is open for manufacturers and exporters from Sialkot, Pakistan.
                   </div>
                 </div>
               </div>
@@ -147,8 +146,7 @@ function FAQs() {
                 >
                   <div className="accordion-body text-muted">
                     At this stage, products are listed directly by registered
-                    companies. Product verification features will be added
-                    in future versions.
+                    companies. Product verification features were added, They can not add AI images of products,
                   </div>
                 </div>
               </div>

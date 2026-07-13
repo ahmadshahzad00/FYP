@@ -6,14 +6,31 @@ import Complaint from "../models/Complaint.js";
 import Product from "../models/Product.js";
 import Business from "../models/Business.js";
 import { protect, protectAdmin } from "../middleware/middleware.js";
+import nodemailer from "nodemailer";
 
 const router = express.Router();
+
+// Email Configuration
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "iamahmadshahzad228576@gmail.com",
+    pass: "hznebvmgjdhnhais",
+  },
+});
+
+transporter.verify((error) => {
+  if (error) {
+    console.error("❌ Email configuration error:", error);
+  } else {
+    console.log("✅ Email server is ready");
+  }
+});
 
 // Ensure upload directory exists
 const uploadDir = "uploads/complaints";
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
-  console.log("✅ Created uploads/complaints directory");
 }
 
 /* ================= MULTER CONFIG ================= */
@@ -27,15 +44,9 @@ const storage = multer.diskStorage({
   },
 });
 
-// ✅ FIXED: Better file filter with more allowed types
 const fileFilter = (req, file, cb) => {
-  // Allow images, PDFs, and documents
   const allowedTypes = [
-    'image/jpeg',
-    'image/jpg', 
-    'image/png',
-    'image/gif',
-    'image/webp',
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -44,7 +55,7 @@ const fileFilter = (req, file, cb) => {
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error(`File type not allowed: ${file.mimetype}. Please upload images, PDF, or Word documents.`));
+    cb(new Error(`File type not allowed: ${file.mimetype}`));
   }
 };
 
@@ -54,18 +65,199 @@ const upload = multer({
   fileFilter: fileFilter,
 });
 
-/* ================= TEST ROUTE ================= */
-router.get("/test", (req, res) => {
-  res.json({ success: true, message: "Complaint route is working!" });
-});
+// Email Functions
+const sendComplaintReplyEmail = async (customerEmail, customerName, replyData) => {
+  try {
+    const { 
+      complaintSubject, 
+      productName, 
+      businessName, 
+      replyMessage,
+      complaintId,
+      status
+    } = replyData;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #dc3545; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .reply-box { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; margin: 20px 0; }
+          .product-info { background: #e9ecef; padding: 15px; border-radius: 8px; margin: 15px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px; }
+          .button { display: inline-block; background: #dc3545; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; }
+          .status-badge { 
+            display: inline-block; 
+            padding: 5px 15px; 
+            border-radius: 20px; 
+            background: ${status === 'resolved' ? '#28a745' : '#ffc107'};
+            color: ${status === 'resolved' ? 'white' : '#333'};
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2 style="margin: 0;">📩 Reply to Your Complaint</h2>
+          </div>
+          <div class="content">
+            <h3>Dear ${customerName},</h3>
+            <p>The business owner has responded to your complaint regarding <strong>${productName}</strong>.</p>
+            
+            <div class="product-info">
+              <strong>📦 Product:</strong> ${productName}<br>
+              <strong>🏢 Business:</strong> ${businessName}<br>
+              <strong>📝 Subject:</strong> ${complaintSubject}<br>
+              <strong>📌 Status:</strong> <span class="status-badge">${status}</span>
+            </div>
+
+            <div class="reply-box">
+              <h4 style="margin-top: 0;">💬 Response from ${businessName}:</h4>
+              <p style="font-size: 16px; white-space: pre-wrap;">${replyMessage}</p>
+            </div>
+
+            <p style="color: #6c757d; font-size: 14px;">
+              You can reply directly to this email to continue the conversation.
+            </p>
+
+            <hr style="border: 1px solid #dee2e6; margin: 20px 0;">
+
+            <p style="font-size: 14px; color: #6c757d;">
+              <strong>📌 Complaint ID:</strong> ${complaintId}<br>
+              <strong>📅 Date:</strong> ${new Date().toLocaleString()}
+            </p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} Sialkot Export Mella. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await transporter.sendMail({
+      from: `"${businessName}" <iamahmadshahzad228576@gmail.com>`,
+      to: customerEmail,
+      subject: `Re: ${complaintSubject}`,
+      html: html,
+    });
+    return true;
+  } catch (error) {
+    console.error("❌ Email error:", error);
+    return false;
+  }
+};
+
+const sendComplaintStatusEmail = async (customerEmail, customerName, statusData) => {
+  try {
+    const { 
+      complaintSubject, 
+      productName, 
+      businessName, 
+      status,
+      resolution,
+      complaintId
+    } = statusData;
+
+    const statusMessages = {
+      resolved: "✅ Your complaint has been resolved!",
+      in_progress: "🔄 Your complaint is now being reviewed and worked on.",
+      in_review: "🔍 Your complaint is under review.",
+      closed: "🔒 Your complaint has been closed.",
+    };
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #0d6efd; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .status-box { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            border-left: 4px solid ${status === 'resolved' ? '#28a745' : '#ffc107'};
+            margin: 20px 0;
+          }
+          .footer { text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px; }
+          .button { display: inline-block; background: #0d6efd; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; }
+          .status-badge { 
+            display: inline-block; 
+            padding: 5px 15px; 
+            border-radius: 20px; 
+            background: ${status === 'resolved' ? '#28a745' : '#ffc107'};
+            color: ${status === 'resolved' ? 'white' : '#333'};
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2 style="margin: 0;">📌 Complaint Status Update</h2>
+          </div>
+          <div class="content">
+            <h3>Dear ${customerName},</h3>
+            <p>${statusMessages[status] || 'Your complaint status has been updated.'}</p>
+            
+            <div class="product-info">
+              <strong>📦 Product:</strong> ${productName}<br>
+              <strong>🏢 Business:</strong> ${businessName}<br>
+              <strong>📝 Subject:</strong> ${complaintSubject}<br>
+              <strong>📌 New Status:</strong> <span class="status-badge">${status}</span>
+            </div>
+
+            ${resolution ? `
+              <div class="status-box">
+                <h4 style="margin-top: 0;">📋 Resolution Details:</h4>
+                <p style="white-space: pre-wrap;">${resolution}</p>
+              </div>
+            ` : ''}
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/complaint/${complaintId}" class="button">
+                View Complaint Status
+              </a>
+            </div>
+
+            <hr style="border: 1px solid #dee2e6; margin: 20px 0;">
+
+            <p style="font-size: 14px; color: #6c757d;">
+              <strong>📌 Complaint ID:</strong> ${complaintId}
+            </p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} Sialkot Export Mella. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await transporter.sendMail({
+      from: `"${businessName}" <iamahmadshahzad228576@gmail.com>`,
+      to: customerEmail,
+      subject: `Complaint Status Update: ${complaintSubject}`,
+      html: html,
+    });
+    return true;
+  } catch (error) {
+    console.error("❌ Email error:", error);
+    return false;
+  }
+};
 
 /* ================= USER: SUBMIT COMPLAINT ================= */
 router.post("/", protect, upload.array("attachments", 5), async (req, res) => {
   try {
-    console.log("📝 Received complaint submission");
-    console.log("📋 Body:", req.body);
-    console.log("📎 Files:", req.files ? `${req.files.length} files` : "No files");
-
     const {
       productId,
       productCode,
@@ -76,9 +268,11 @@ router.post("/", protect, upload.array("attachments", 5), async (req, res) => {
       complaintType,
       description,
       severity,
+      customerName,
+      customerEmail,
+      customerPhone,
     } = req.body;
 
-    // Validation
     if (!productId || !productCode || !productName || !businessId || !businessName || !subject || !complaintType || !description) {
       return res.status(400).json({
         success: false,
@@ -86,7 +280,6 @@ router.post("/", protect, upload.array("attachments", 5), async (req, res) => {
       });
     }
 
-    // Check if product exists
     const product = await Product.findById(productId);
     if (!product) {
       return res.status(404).json({
@@ -95,7 +288,6 @@ router.post("/", protect, upload.array("attachments", 5), async (req, res) => {
       });
     }
 
-    // Check if business exists
     const business = await Business.findById(businessId);
     if (!business) {
       return res.status(404).json({
@@ -104,7 +296,6 @@ router.post("/", protect, upload.array("attachments", 5), async (req, res) => {
       });
     }
 
-    // Process attachments
     const attachments = [];
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
@@ -116,17 +307,6 @@ router.post("/", protect, upload.array("attachments", 5), async (req, res) => {
       }
     }
 
-    // Get user info from req.user (set by protect middleware)
-    const user = req.user;
-    
-    // ✅ FIXED: Use user data with fallbacks
-    const customerName = user.name || user.fullName || "Customer";
-    const customerEmail = user.email || "customer@example.com";
-    const customerPhone = user.phone || user.mobile || "N/A";
-
-    console.log(`👤 Customer: ${customerName}, ${customerEmail}`);
-
-    // Create complaint
     const complaint = new Complaint({
       product: productId,
       productCode,
@@ -134,9 +314,9 @@ router.post("/", protect, upload.array("attachments", 5), async (req, res) => {
       business: businessId,
       businessName,
       businessOwner: business.userId,
-      customerName: customerName,
-      customerEmail: customerEmail,
-      customerPhone: customerPhone,
+      customerName: customerName || "Customer",
+      customerEmail: customerEmail || "customer@example.com",
+      customerPhone: customerPhone || "N/A",
       subject,
       complaintType,
       description,
@@ -146,7 +326,6 @@ router.post("/", protect, upload.array("attachments", 5), async (req, res) => {
     });
 
     await complaint.save();
-    console.log(`✅ Complaint created with ID: ${complaint._id}`);
 
     await complaint.populate("businessOwner", "name email");
     await complaint.populate("product", "name price images");
@@ -158,18 +337,7 @@ router.post("/", protect, upload.array("attachments", 5), async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Error submitting complaint:", error);
-    
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(e => e.message);
-      return res.status(400).json({
-        success: false,
-        message: "Validation error: " + errors.join(', '),
-        errors: error.errors
-      });
-    }
-    
+    console.error("Error submitting complaint:", error);
     res.status(500).json({
       success: false,
       message: "Server error: " + error.message,
@@ -216,7 +384,8 @@ router.get("/business/my-complaints", protect, async (req, res) => {
 });
 
 /* ================= BUSINESS OWNER: GET SINGLE COMPLAINT ================= */
-router.get("/:id", protect, async (req, res) => {
+/* ================= PUBLIC: GET SINGLE COMPLAINT (No Auth Required) ================= */
+router.get("/:id", async (req, res) => {
   try {
     const complaint = await Complaint.findById(req.params.id)
       .populate("product", "name price images")
@@ -226,17 +395,6 @@ router.get("/:id", protect, async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Complaint not found",
-      });
-    }
-
-    const business = await Business.findOne({ userId: req.user.id });
-    const isBusinessOwner = business && complaint.business.toString() === business._id.toString();
-    const isAdmin = req.user.role === "admin";
-
-    if (!isBusinessOwner && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "You don't have permission to view this complaint",
       });
     }
 
@@ -295,11 +453,26 @@ router.post("/:id/reply", protect, async (req, res) => {
     await complaint.populate("product", "name price images");
     await complaint.populate("businessOwner", "name email");
 
+    // Send email notification
+    await sendComplaintReplyEmail(
+      complaint.customerEmail,
+      complaint.customerName,
+      {
+        complaintSubject: complaint.subject,
+        productName: complaint.productName,
+        businessName: complaint.businessName,
+        replyMessage: message,
+        complaintId: complaint._id,
+        status: complaint.status,
+      }
+    );
+
     res.json({
       success: true,
-      message: "Reply sent successfully",
+      message: "Reply sent successfully! Email notification sent to customer.",
       data: complaint,
     });
+
   } catch (error) {
     console.error("Error replying to complaint:", error);
     res.status(500).json({
@@ -352,11 +525,28 @@ router.put("/:id/status", protect, async (req, res) => {
 
     await complaint.save();
 
+    // Send status update email for important status changes
+    if (status === "resolved" || status === "in_progress" || status === "in_review") {
+      await sendComplaintStatusEmail(
+        complaint.customerEmail,
+        complaint.customerName,
+        {
+          complaintSubject: complaint.subject,
+          productName: complaint.productName,
+          businessName: complaint.businessName,
+          status: status,
+          resolution: resolution || "",
+          complaintId: complaint._id,
+        }
+      );
+    }
+
     res.json({
       success: true,
       message: `Complaint status updated to ${status}`,
       data: complaint,
     });
+
   } catch (error) {
     console.error("Error updating complaint status:", error);
     res.status(500).json({
