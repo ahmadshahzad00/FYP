@@ -60,6 +60,7 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        
         <Route path="/business-profile" element={<BusinessProfile />} />
         <Route path="/FAQs" element={<FAQs />} />
         <Route path="/sendInquiry" element={<SendInquiry />} />

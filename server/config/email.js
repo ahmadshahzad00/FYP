@@ -5,7 +5,7 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: "iamahmadshahzad228576@gmail.com",
-    pass: "hznebvmgjdhnhais", // Replace with your actual app password
+    pass: "hznebvmgjdhnhais",
   },
 });
 
@@ -30,7 +30,6 @@ export const sendEmail = async (options) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    // console.log("📧 Email sent:", info.messageId);
     return info;
   } catch (error) {
     console.error("❌ Error sending email:", error);
@@ -129,7 +128,7 @@ export const sendInquiryReplyEmail = async (customerEmail, customerName, replyDa
 
   return sendEmail({
     fromEmail: "iamahmadshahzad228576@gmail.com",
-    replyTo: businessEmail, // Business owner's email (customer will reply to this)
+    replyTo: businessEmail, 
     to: customerEmail,
     subject: `Re: ${inquirySubject}`,
     html,

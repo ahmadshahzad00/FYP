@@ -9,7 +9,7 @@ export const protect = (req, res, next) => {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ 
       success: false,
-      message: "No token provided" 
+      message: "No token provided"
     });
   }
 
