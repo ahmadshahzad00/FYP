@@ -80,25 +80,25 @@ function BusinessRegister() {
       
       // Reset form after successful submission
       if (response.data.success) {
-        setFormData({
-          companyName: "",
-          ownerName: "",
-          email: "",
-          phone: "",
-          whatsapp: "",
-          yearEstablished: "",
-          factoryAddress: "",
-          memberId: "",
-          category: "",
-          products: "",
-          website: "",
-          description: "",
-          facebook: "",
-          instagram: "",
-          twitter: "",
-          tiktok: "",
-          pinterest: "",
-        });
+          setFormData({
+            companyName: "",
+            ownerName: "",
+            email: "",
+            phone: "",
+            whatsapp: "",
+            yearEstablished: "",
+            factoryAddress: "",
+            memberId: "",
+            category: "",
+            products: "",
+            website: "",
+            description: "",
+            facebook: "",
+            instagram: "",
+            twitter: "",
+            tiktok: "",
+            pinterest: "",
+          });
         setChamberFile(null);
         setCnicFrontFile(null);
         setCnicBackFile(null);
@@ -303,7 +303,7 @@ function BusinessRegister() {
                         placeholder="Describe your business..." 
                         onChange={handleChange}
                         value={formData.description}
-                      ></textarea>
+                      ></textarea> 
                     </div>
 
                     <div className="col-md-6">
@@ -336,9 +336,7 @@ function BusinessRegister() {
                       )}
                     </button>
                   </div>
-
                 </form>
-
               </div>
             </div>
           </div>

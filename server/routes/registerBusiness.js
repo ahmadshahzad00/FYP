@@ -388,9 +388,9 @@ router.put("/update-business/:id", protect, async (req, res) => {
     
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(businessId)) {
-      return res.status(400).json({
-        success: false,
-        msg: "Invalid business ID format"
+      return res.status(400).json({  
+        success: false, 
+        msg: "Invalid business ID format" 
       });
     }
 

@@ -29,7 +29,7 @@ export const protect = (req, res, next) => {
 
 // Admin specific middleware
 export const protectAdmin = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  const authHeader = req.headers.authorization; 
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ 
@@ -74,9 +74,9 @@ export const protectAdmin = async (req, res, next) => {
     
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ 
-        success: false,
+        success: false, 
         message: "Token has expired. Please login again." 
-      });
+      }); 
     }
     
     return res.status(401).json({ 
@@ -85,3 +85,4 @@ export const protectAdmin = async (req, res, next) => {
     });
   }
 };
+
