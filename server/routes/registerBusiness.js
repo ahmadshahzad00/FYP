@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import Business from "../models/Business.js";
 import { protect, protectAdmin } from "../middleware/middleware.js";
 import { verifyMemberId } from "../services/chamberVerification.js";
+import { verifyChamberCertificate } from "../services/pdfReader.js";
 
 const router = express.Router();
 
@@ -61,7 +62,125 @@ const uploadFields = upload.fields([
   { name: "logo", maxCount: 1 },
 ]);
 
-/* ================= USER SUBMIT BUSINESS WITH VERIFICATION ================= */
+/* ================= COMBINED VERIFICATION FUNCTION ================= */
+const verifyBusiness = async (memberId, pdfPath) => {
+  const result = {
+    verified: false,
+    status: "pending",
+    message: "",
+    pdfData: null,
+    webData: null,
+    matched: false,
+  };
+
+  // Step 1: Verify PDF
+  let pdfVerification = null;
+  let extractedMemberId = null;
+  let extractedDetails = null;
+
+  try {
+    if (pdfPath) {
+      console.log(`📄 Reading chamber certificate PDF...`);
+      pdfVerification = await verifyChamberCertificate(pdfPath);
+
+      if (pdfVerification.success && pdfVerification.memberId) {
+        extractedMemberId = pdfVerification.memberId;
+        extractedDetails = pdfVerification.details;
+        console.log(`✅ Member ID extracted from PDF: ${extractedMemberId}`);
+      } else {
+        console.log(`❌ PDF verification failed: ${pdfVerification?.message}`);
+      }
+    }
+  } catch (error) {
+    console.error("❌ PDF verification error:", error);
+    pdfVerification = {
+      success: false,
+      message: "PDF verification service error",
+    };
+  }
+
+  // Step 2: Verify with Chamber Website
+  let webVerification = null;
+  const memberIdToVerify = extractedMemberId || memberId;
+
+  try {
+    if (memberIdToVerify) {
+      console.log(`🔍 Verifying member ID with Chamber website: ${memberIdToVerify}`);
+      webVerification = await verifyMemberId(memberIdToVerify);
+      
+      if (webVerification.verified) {
+        console.log(`✅ Member ID ${memberIdToVerify} verified on Chamber website!`);
+      } else {
+        console.log(`❌ Member ID ${memberIdToVerify} not found on Chamber website`);
+      }
+    }
+  } catch (error) {
+    console.error("❌ Web verification error:", error);
+    webVerification = {
+      verified: false,
+      message: "Web verification service error",
+    };
+  }
+
+  // Step 3: Combine results
+  const pdfSuccess = pdfVerification?.success || false;
+  const webSuccess = webVerification?.verified || false;
+
+  // Both PDF and Web verification passed
+  if (pdfSuccess && webSuccess) {
+    // Check if Member IDs match
+    const pdfMemberId = extractedMemberId?.toUpperCase().trim();
+    const webMemberId = memberIdToVerify?.toUpperCase().trim();
+    
+    if (pdfMemberId === webMemberId) {
+      result.verified = true;
+      result.status = "approved";
+      result.matched = true;
+      result.message = `✅ Business verified! Member ID ${memberIdToVerify} found in PDF and verified on Chamber website.`;
+    } else {
+      result.verified = false;
+      result.status = "pending";
+      result.matched = false;
+      result.message = `⚠️ Member ID mismatch: PDF shows "${pdfMemberId}" but web shows "${webMemberId}". Manual review required.`;
+    }
+  } 
+  // Only PDF passed, Web failed
+  else if (pdfSuccess && !webSuccess) {
+    result.verified = false;
+    result.status = "pending";
+    result.message = `⚠️ Member ID ${extractedMemberId} found in PDF but not verified on Chamber website. Manual review required.`;
+  }
+  // Only Web passed, PDF failed
+  else if (!pdfSuccess && webSuccess) {
+    result.verified = false;
+    result.status = "pending";
+    result.message = `⚠️ Member ID ${memberIdToVerify} verified on Chamber website but not found in PDF certificate. Manual review required.`;
+  }
+  // Both failed
+  else {
+    result.verified = false;
+    result.status = "rejected";
+    result.message = `❌ Verification failed: Member ID not found in PDF or on Chamber website.`;
+  }
+
+  result.pdfData = {
+    success: pdfSuccess,
+    memberId: extractedMemberId,
+    details: extractedDetails,
+    message: pdfVerification?.message || "",
+  };
+
+  result.webData = {
+    success: webSuccess,
+    memberId: memberIdToVerify,
+    message: webVerification?.message || "",
+    data: webVerification?.data || {},
+  };
+
+  return result;
+};
+
+/* ================= USER SUBMIT BUSINESS WITH COMBINED VERIFICATION ================= */
 router.post("/", protect, uploadFields, async (req, res) => {
   try {
     // Check required files
@@ -87,32 +206,12 @@ router.post("/", protect, uploadFields, async (req, res) => {
 
     // Get member ID from request
     const memberId = req.body.memberId;
+    const pdfPath = req.files.chamberMembership[0].path;
 
     // ============================================
-    // VERIFY MEMBER ID WITH CHAMBER OF COMMERCE
+    // COMBINED VERIFICATION
     // ============================================
-    let verificationResult = null;
-    let status = "pending";
-
-    try {
-      console.log(`🔍 Verifying member ID: ${memberId}`);
-      verificationResult = await verifyMemberId(memberId);
-      
-      if (verificationResult.verified) {
-        status = "approved";
-        console.log(`✅ Member ID ${memberId} verified successfully!`);
-      } else {
-        status = "rejected";
-        console.log(`❌ Member ID ${memberId} verification failed: ${verificationResult.message}`);
-      }
-    } catch (error) {
-      console.error("❌ Verification error:", error);
-      status = "pending";
-      verificationResult = {
-        verified: false,
-        message: "Verification service error. Manual review required."
-      };
-    }
+    const verificationResult = await verifyBusiness(memberId, pdfPath);
 
     // Create business with verification status
     const business = new Business({
@@ -124,7 +223,7 @@ router.post("/", protect, uploadFields, async (req, res) => {
       whatsapp: req.body.whatsapp || "",
       yearEstablished: req.body.yearEstablished,
       factoryAddress: req.body.factoryAddress,
-      memberId: memberId,
+      memberId: verificationResult.pdfData.memberId || memberId,
       category: req.body.category,
       products: req.body.products,
       website: req.body.website || "",
@@ -134,15 +233,19 @@ router.post("/", protect, uploadFields, async (req, res) => {
       twitter: req.body.twitter || "",
       tiktok: req.body.tiktok || "",
       pinterest: req.body.pinterest || "",
-      status: status,
+      status: verificationResult.status,
       chamberMembership: req.files.chamberMembership[0].path,
       cnicFront: req.files.cnicFront[0].path,
       cnicBack: req.files.cnicBack[0].path,
       logo: req.files?.logo?.[0]?.path || "",
       verificationDetails: {
-        verified: verificationResult?.verified || false,
-        message: verificationResult?.message || "",
-        data: verificationResult?.data || {},
+        verified: verificationResult.verified,
+        message: verificationResult.message,
+        data: {
+          pdfVerification: verificationResult.pdfData,
+          webVerification: verificationResult.webData,
+          matched: verificationResult.matched,
+        },
         verifiedAt: new Date(),
         verifiedBy: "auto"
       }
@@ -151,20 +254,11 @@ router.post("/", protect, uploadFields, async (req, res) => {
     await business.save();
 
     // Send response with verification status
-    let message = "";
-    if (status === "approved") {
-      message = "✅ Business registered and verified successfully!";
-    } else if (status === "rejected") {
-      message = "❌ Business registration submitted but member ID could not be verified. Please contact support with valid Chamber of Commerce membership.";
-    } else {
-      message = "⏳ Business registration submitted. Verification in progress.";
-    }
-
     res.status(201).json({
       success: true,
-      msg: message,
+      msg: verificationResult.message,
       business,
-      verification: verificationResult
+      verification: verificationResult,
     });
 
   } catch (err) {
@@ -176,67 +270,9 @@ router.post("/", protect, uploadFields, async (req, res) => {
   }
 });
 
-/* ================= USER: GET MY BUSINESS ================= */
-router.get("/my-business", protect, async (req, res) => {
+/* ================= ADMIN: COMBINED VERIFY BUSINESS ================= */
+router.post("/:id/verify-combined", protectAdmin, async (req, res) => {
   try {
-    const business = await Business.findOne({
-      userId: req.user.id,
-    });
-
-    if (!business) {
-      return res.status(404).json({
-        success: false,
-        msg: "No business found",
-      });
-    }
-
-    // Return business with explicit ID
-    res.json({
-      success: true,
-      business: business,
-      _id: business._id, // Explicitly include _id for frontend
-    });
-  } catch (err) {
-    console.error("Error fetching business:", err);
-    res.status(500).json({
-      success: false,
-      msg: "Server error",
-    });
-  }
-});
-
-/* ================= ADMIN: GET ALL BUSINESS REQUESTS ================= */
-router.get("/all", protectAdmin, async (req, res) => {
-  try {
-    const businesses = await Business.find()
-      .populate("userId", "name email")
-      .sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      data: businesses,
-    });
-  } catch (err) {
-    console.error("Error fetching businesses:", err);
-    res.status(500).json({
-      success: false,
-      msg: "Error fetching businesses",
-    });
-  }
-});
-
-/* ================= ADMIN: UPDATE BUSINESS STATUS ================= */
-router.put("/:id/status", protectAdmin, async (req, res) => {
-  try {
-    const { status } = req.body;
-
-    if (!["approved", "rejected", "pending"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        msg: "Invalid status. Must be 'approved', 'rejected', or 'pending'",
-      });
-    }
-
     const business = await Business.findById(req.params.id);
 
     if (!business) {
@@ -246,29 +282,53 @@ router.put("/:id/status", protectAdmin, async (req, res) => {
       });
     }
 
-    business.status = status;
-    
-    // Update verification details if admin manually changes status
+    // Get member ID from business
+    const memberId = business.memberId;
+    const pdfPath = business.chamberMembership;
+
+    if (!pdfPath) {
+      return res.status(400).json({
+        success: false,
+        msg: "No chamber membership PDF found",
+      });
+    }
+
+    // Run combined verification
+    const verificationResult = await verifyBusiness(memberId, pdfPath);
+
+    // Update business with verification result
+    business.status = verificationResult.status;
     business.verificationDetails = {
-      verified: status === "approved",
-      message: status === "approved" ? "Manually approved by admin" : "Manually rejected by admin",
-      data: business.verificationDetails?.data || {},
+      verified: verificationResult.verified,
+      message: verificationResult.message,
+      data: {
+        pdfVerification: verificationResult.pdfData,
+        webVerification: verificationResult.webData,
+        matched: verificationResult.matched,
+      },
       verifiedAt: new Date(),
       verifiedBy: "admin"
     };
+
+    // Update member ID if PDF extraction found a different one
+    if (verificationResult.pdfData.memberId && verificationResult.pdfData.memberId !== business.memberId) {
+      business.memberId = verificationResult.pdfData.memberId;
+    }
 
     await business.save();
 
     res.json({
       success: true,
-      msg: `Status updated to ${status}`,
+      msg: verificationResult.message,
       business,
+      verification: verificationResult,
     });
+
   } catch (err) {
-    console.error("Error updating status:", err);
+    console.error("Error in combined verification:", err);
     res.status(500).json({
       success: false,
-      msg: "Server error",
+      msg: "Server error: " + err.message,
     });
   }
 });
@@ -321,10 +381,104 @@ router.post("/:id/reverify", protectAdmin, async (req, res) => {
   }
 });
 
+/* ================= USER: GET MY BUSINESS ================= */
+router.get("/my-business", protect, async (req, res) => {
+  try {
+    const business = await Business.findOne({
+      userId: req.user.id,
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        msg: "No business found",
+      });
+    }
+
+    res.json({
+      success: true,
+      business: business,
+      _id: business._id,
+    });
+  } catch (err) {
+    console.error("Error fetching business:", err);
+    res.status(500).json({
+      success: false,
+      msg: "Server error",
+    });
+  }
+});
+
+/* ================= ADMIN: GET ALL BUSINESS REQUESTS ================= */
+router.get("/all", protectAdmin, async (req, res) => {
+  try {
+    const businesses = await Business.find()
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: businesses,
+    });
+  } catch (err) {
+    console.error("Error fetching businesses:", err);
+    res.status(500).json({
+      success: false,
+      msg: "Error fetching businesses",
+    });
+  }
+});
+
+/* ================= ADMIN: UPDATE BUSINESS STATUS ================= */
+router.put("/:id/status", protectAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (!["approved", "rejected", "pending"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        msg: "Invalid status. Must be 'approved', 'rejected', or 'pending'",
+      });
+    }
+
+    const business = await Business.findById(req.params.id);
+
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        msg: "Business not found",
+      });
+    }
+
+    business.status = status;
+
+    business.verificationDetails = {
+      verified: status === "approved",
+      message: status === "approved" ? "Manually approved by admin" : "Manually rejected by admin",
+      data: business.verificationDetails?.data || {},
+      verifiedAt: new Date(),
+      verifiedBy: "admin"
+    };
+
+    await business.save();
+
+    res.json({
+      success: true,
+      msg: `Status updated to ${status}`,
+      business,
+    });
+  } catch (err) {
+    console.error("Error updating status:", err);
+    res.status(500).json({
+      success: false,
+      msg: "Server error",
+    });
+  }
+});
+
 /* ================= PUBLIC: GET BUSINESS BY ID ================= */
 router.get("/business/:id", async (req, res) => {
   try {
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
         success: false,
@@ -333,14 +487,14 @@ router.get("/business/:id", async (req, res) => {
     }
 
     const business = await Business.findById(req.params.id);
-    
+
     if (!business) {
       return res.status(404).json({
         success: false,
         message: "Business not found",
       });
     }
-    
+
     res.status(200).json({
       success: true,
       business,
@@ -358,16 +512,16 @@ router.get("/business/:id", async (req, res) => {
 router.get("/business-by-member/:memberId", async (req, res) => {
   try {
     const { memberId } = req.params;
-    
+
     const business = await Business.findOne({ memberId });
-    
+
     if (!business) {
       return res.status(404).json({
         success: false,
         message: "Business not found with this Member ID",
       });
     }
-    
+
     res.status(200).json({
       success: true,
       business,
@@ -385,18 +539,16 @@ router.get("/business-by-member/:memberId", async (req, res) => {
 router.put("/update-business/:id", protect, async (req, res) => {
   try {
     const businessId = req.params.id;
-    
-    // Validate ObjectId
+
     if (!mongoose.Types.ObjectId.isValid(businessId)) {
-      return res.status(400).json({  
-        success: false, 
-        msg: "Invalid business ID format" 
+      return res.status(400).json({
+        success: false,
+        msg: "Invalid business ID format"
       });
     }
 
-    // Find business
     const business = await Business.findById(businessId);
-    
+
     if (!business) {
       return res.status(404).json({
         success: false,
@@ -404,7 +556,6 @@ router.put("/update-business/:id", protect, async (req, res) => {
       });
     }
 
-    // Check if user owns this business
     if (business.userId.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
@@ -412,10 +563,8 @@ router.put("/update-business/:id", protect, async (req, res) => {
       });
     }
 
-    // Check if business is approved - if not, allow editing but keep status
     const isApproved = business.status === "approved";
 
-    // Update fields
     const updatedFields = {
       companyName: req.body.companyName || business.companyName,
       ownerName: req.body.ownerName || business.ownerName,
@@ -436,7 +585,6 @@ router.put("/update-business/:id", protect, async (req, res) => {
       pinterest: req.body.pinterest || business.pinterest,
     };
 
-    // If business was approved and member ID changed, reset verification
     if (isApproved && req.body.memberId && req.body.memberId !== business.memberId) {
       updatedFields.status = "pending";
       updatedFields.verificationDetails = {
@@ -448,7 +596,6 @@ router.put("/update-business/:id", protect, async (req, res) => {
       };
     }
 
-    // Update the business
     const updatedBusiness = await Business.findByIdAndUpdate(
       businessId,
       { $set: updatedFields },
@@ -457,8 +604,8 @@ router.put("/update-business/:id", protect, async (req, res) => {
 
     res.json({
       success: true,
-      msg: isApproved && req.body.memberId && req.body.memberId !== business.memberId 
-        ? "Business updated. Member ID changed - Re-verification required." 
+      msg: isApproved && req.body.memberId && req.body.memberId !== business.memberId
+        ? "Business updated. Member ID changed - Re-verification required."
         : "Business updated successfully",
       business: updatedBusiness
     });

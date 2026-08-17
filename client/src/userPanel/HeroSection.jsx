@@ -249,18 +249,18 @@ function HeroSection() {
           </div>
 
           <div className="row g-4">
-            {/* Football */}
+            {/* Sports */}
             <div className="col-md-4">
               <div className="card h-100 shadow-sm border-0 text-center p-4 product-type-card" style={{ transition: "transform 0.3s ease" }}>
                 <div className="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: "80px", height: "80px" }}>
                   <i className="bi bi-dribbble display-4 text-primary"></i>
                 </div>
-                <h5 className="fw-bold">Football</h5>
+                <h5 className="fw-bold">Sports</h5>
                 <p className="text-muted">
-                  International-standard hand-stitched footballs exported worldwide.
+                  International-standard sports equipment exported worldwide.
                 </p>
                 <Link
-                  to="/products?category=football" 
+                  to="/products?category=sports" 
                   className="btn btn-outline-primary mt-auto"
                 >
                   Explore Businesses

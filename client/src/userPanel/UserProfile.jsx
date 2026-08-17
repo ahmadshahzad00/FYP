@@ -214,13 +214,13 @@ function UserProfile() {
                   placeholder="Full Name"
                 />
 
-                <input
+                {/* <input
                   className="form-control mb-3"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Email"
-                />
+                /> */}
 
                 <input
                   className="form-control mb-3"

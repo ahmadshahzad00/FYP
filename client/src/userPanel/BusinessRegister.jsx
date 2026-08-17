@@ -15,7 +15,7 @@ function BusinessRegister() {
     memberId: "",
     category: "",
     products: "",
-    website: "",
+    website: "", 
     description: "",
     facebook: "",
     instagram: "",

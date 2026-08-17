@@ -311,11 +311,11 @@ function AdminDashBoard() {
                     </Link>
                   </div>
                   <div className="col-md-4">
-                    <Link to="/adminProfile" 
+                    <Link to="/listComplaints" 
                       className="btn btn-outline-info w-100 py-3"
                     >
                       <i className="bi bi-person fs-4 d-block mb-2"></i>
-                      Admin Profile
+                      Complaints
                     </Link>
                   </div>
                 </div>
