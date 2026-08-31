@@ -477,20 +477,20 @@ function PublicBusinessProfile() {
             </div>
           </div>
 
+
           {/* RIGHT SIDEBAR */}
-          <div className="col-lg-4">
-            {/* CONTACT */}
+          <div className="col-lg-4"> 
+            {/* CONTACT */} 
             <div className="card shadow-sm border-0 mb-4">
               <div className="card-body">
                 <h6 className="fw-bold text-primary mb-3">
                   <i className="bi bi-telephone me-2"></i>Contact Supplier
                 </h6>
-
                 <p className="mb-2">
                   <i className="bi bi-envelope me-2 text-muted"></i>
                   <a href={`mailto:${business.email}`} className="text-decoration-none">
                     {business.email || "N/A"}
-                  </a>
+                  </a> 
                 </p>
 
                 <p className="mb-2">

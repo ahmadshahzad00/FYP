@@ -24,7 +24,7 @@ function UserHeader() {
   const fetchCategories = async () => {
     try {
       setLoadingCategories(true);
-      const response = await axios.get(
+      const response = await axios.get( 
         "http://localhost:5000/api/product/public-products"
       );
       
