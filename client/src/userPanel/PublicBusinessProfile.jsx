@@ -341,11 +341,11 @@ function PublicBusinessProfile() {
                                           width: "50px",
                                           height: "50px",
                                           cursor: "pointer",
-                                          overflow: "hidden",
-                                          border: index === 0 ? "2px solid #0d6efd" : "1px solid #ddd",
-                                        }}
-                                        onClick={() => openImageGallery(p, index)}
-                                      >
+                                          overflow: "hidden",  
+                                          border: index === 0 ? "2px solid #0d6efd" : "1px solid #ddd",  
+                                        }}  
+                                        onClick={() => openImageGallery(p, index)}  
+                                      >  
                                         <img
                                           src={`http://localhost:5000/${img}`}
                                           alt={`${p.name} ${index + 1}`}

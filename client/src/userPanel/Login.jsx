@@ -149,7 +149,7 @@ function Login() {
                       <input
                         type="password"
                         name="password"
-                        className="form-control"
+                        className="form-control" 
                         placeholder="Enter your password"
                         value={form.password}
                         onChange={handleChange}

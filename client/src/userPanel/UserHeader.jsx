@@ -8,6 +8,8 @@ function UserHeader() {
   const [hasBusiness, setHasBusiness] = useState(false);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+ 
+
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
